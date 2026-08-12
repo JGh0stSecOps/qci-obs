@@ -478,7 +478,7 @@ void OBSBasic::on_actionReleaseNotes_triggered()
 	 * obs_get_version_string() as a tag, so it sent the operator to upstream's release page for
 	 * whatever upstream version this fork happens to be based on — release notes for software
 	 * they are not running, from a project that did not build it. */
-	QString addr("https://github.com/JGh0stSecOps/qci-obs/releases");
+	QString addr("https://github.com/JGh0stSecOps/qci-studio/releases");
 	QUrl url(QString("%1/%2").arg(addr, obs_get_version_string()), QUrl::TolerantMode);
 	QDesktopServices::openUrl(url);
 }

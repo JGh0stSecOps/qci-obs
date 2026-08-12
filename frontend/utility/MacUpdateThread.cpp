@@ -10,7 +10,7 @@
 
 /* A fork must not query the parent project's update service. The branch list it returns describes
  * *OBS Studio's* release channels, and every request carries the install GUID header from
- * WhatsNewInfoThread.cpp — QCi-OBS would be counted as, and asking to be updated to, upstream OBS.
+ * WhatsNewInfoThread.cpp — QCi-Studio would be counted as, and asking to be updated to, upstream OBS.
  * Empty disables the fetch below; this whole file is also uncompiled while Sparkle is off (see
  * frontend/cmake/feature-sparkle.cmake), so this is the second lock on the same door. */
 static const char *MAC_BRANCHES_URL = "";

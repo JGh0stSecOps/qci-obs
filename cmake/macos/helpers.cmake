@@ -43,7 +43,7 @@ function(set_target_properties_obs target)
       set_target_properties(
         ${target}
         PROPERTIES
-          OUTPUT_NAME QCi-OBS
+          OUTPUT_NAME QCi-Studio
           MACOSX_BUNDLE TRUE
           MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/cmake/macos/Info.plist.in"
           XCODE_EMBED_FRAMEWORKS_REMOVE_HEADERS_ON_COPY YES
@@ -68,8 +68,8 @@ function(set_target_properties_obs target)
       # BEFORE the first build, not after.
       set_target_xcode_properties(
         ${target}
-        PROPERTIES PRODUCT_BUNDLE_IDENTIFIER solutions.zoetic.qci-obs
-                   PRODUCT_NAME QCi-OBS
+        PROPERTIES PRODUCT_BUNDLE_IDENTIFIER solutions.zoetic.qci-studio
+                   PRODUCT_NAME QCi-Studio
                    ASSETCATALOG_COMPILER_APPICON_NAME AppIcon
                    CURRENT_PROJECT_VERSION ${OBS_BUILD_NUMBER}
                    MARKETING_VERSION ${OBS_VERSION_CANONICAL}
@@ -78,7 +78,7 @@ function(set_target_properties_obs target)
                    CLANG_ENABLE_OBJC_ARC YES
                    SKIP_INSTALL NO
                    INSTALL_PATH "$(LOCAL_APPS_DIR)"
-                   INFOPLIST_KEY_CFBundleDisplayName "QCi OBS"
+                   INFOPLIST_KEY_CFBundleDisplayName "QCi Studio"
                    INFOPLIST_KEY_NSHumanReadableCopyright "(c) 2012-${CURRENT_YEAR} Lain Bailey"
                    INFOPLIST_KEY_NSCameraUsageDescription "OBS needs to access the camera to enable camera sources to work."
                    INFOPLIST_KEY_NSMicrophoneUsageDescription "OBS needs to access the microphone to enable audio input."
@@ -238,7 +238,7 @@ function(set_target_properties_obs target)
       PROPERTIES DYLIB_COMPATIBILITY_VERSION 1.0
                  DYLIB_CURRENT_VERSION ${OBS_VERSION_MAJOR}
                  PRODUCT_NAME ${target}
-                 PRODUCT_BUNDLE_IDENTIFIER solutions.zoetic.qci-obs.${target}
+                 PRODUCT_BUNDLE_IDENTIFIER solutions.zoetic.qci-studio.${target}
                  SKIP_INSTALL YES
     )
 
@@ -255,7 +255,7 @@ function(set_target_properties_obs target)
                    DEVELOPMENT_TEAM ""
                    SKIP_INSTALL YES
                    PRODUCT_NAME ${target}
-                   PRODUCT_BUNDLE_IDENTIFIER solutions.zoetic.qci-obs.${target}
+                   PRODUCT_BUNDLE_IDENTIFIER solutions.zoetic.qci-studio.${target}
                    CURRENT_PROJECT_VERSION ${OBS_BUILD_NUMBER}
                    MARKETING_VERSION ${OBS_VERSION_CANONICAL}
                    GENERATE_INFOPLIST_FILE YES
@@ -272,13 +272,13 @@ function(set_target_properties_obs target)
       set_target_xcode_properties(
         ${target}
         PROPERTIES PRODUCT_NAME ${target}
-                   PRODUCT_BUNDLE_IDENTIFIER solutions.zoetic.qci-obs.${target}
+                   PRODUCT_BUNDLE_IDENTIFIER solutions.zoetic.qci-studio.${target}
       )
     elseif(target STREQUAL obslua)
       set_target_xcode_properties(
         ${target}
         PROPERTIES PRODUCT_NAME ${target}
-                   PRODUCT_BUNDLE_IDENTIFIER solutions.zoetic.qci-obs.${target}
+                   PRODUCT_BUNDLE_IDENTIFIER solutions.zoetic.qci-studio.${target}
       )
     elseif(target STREQUAL obs-dal-plugin)
       set_target_properties(${target} PROPERTIES BUILD_WITH_INSTALL_RPATH TRUE)
@@ -290,7 +290,7 @@ function(set_target_properties_obs target)
       set_target_xcode_properties(
         ${target}
         PROPERTIES PRODUCT_NAME ${target}
-                   PRODUCT_BUNDLE_IDENTIFIER solutions.zoetic.qci-obs.${target}
+                   PRODUCT_BUNDLE_IDENTIFIER solutions.zoetic.qci-studio.${target}
                    CURRENT_PROJECT_VERSION ${OBS_BUILD_NUMBER}
                    MARKETING_VERSION ${OBS_VERSION_CANONICAL}
                    GENERATE_INFOPLIST_FILE YES

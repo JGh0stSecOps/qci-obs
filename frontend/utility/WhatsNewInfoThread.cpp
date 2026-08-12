@@ -15,12 +15,12 @@
 
 #include "moc_WhatsNewInfoThread.cpp"
 
-/* Empty on purpose: QCi-OBS is a fork and has no "what's new" service of its own, so the only
+/* Empty on purpose: QCi-Studio is a fork and has no "what's new" service of its own, so the only
  * thing it could do here is call the OBS project's. That request is not passive — every fetch
  * through FetchAndVerifyFile below carries an X-OBS2-GUID header, the per-install identifier
  * upstream uses to count OBS installations. Pointing a fork at it both files false telemetry and
  * shows this operator release notes for a product they are not running. Fill these in only if
- * QCi-OBS gets its own endpoint, signed with its own key (CheckDataSignature verifies against
+ * QCi-Studio gets its own endpoint, signed with its own key (CheckDataSignature verifies against
  * OBSPublicRSAKey.pem, which is upstream's). */
 #ifndef MAC_WHATSNEW_URL
 #define MAC_WHATSNEW_URL ""

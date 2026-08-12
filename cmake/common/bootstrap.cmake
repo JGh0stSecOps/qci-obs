@@ -50,7 +50,7 @@ set(OBS_PRODUCT_NAME "OBS Studio")
 # variable existed it overwrote that installation's global.ini. OBS_PRODUCT_NAME cannot be reused
 # here: it is only a Windows version-resource string and is not path-safe. Set at bootstrap scope
 # so libobs (which string-matches the directory in its legacy obs-browser guard) sees it too.
-set(OBS_USER_DATA_DIR "qci-obs")
+set(OBS_USER_DATA_DIR "qci-studio")
 set(OBS_WEBSITE "https://www.obsproject.com")
 set(OBS_COMMENTS "Free and open source software for video recording and live streaming")
 set(OBS_LEGAL_COPYRIGHT "(C) Lain Bailey")

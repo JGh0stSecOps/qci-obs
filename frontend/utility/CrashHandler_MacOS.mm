@@ -37,7 +37,7 @@ namespace {
     }
 
     /* macOS names a .ips report after the crashed *process*, which is the bundle's executable file
-     * name — "QCi-OBS-2026-08-11-120000.ips" for this fork, "OBS-....ips" for stock OBS. Upstream
+     * name — "QCi-Studio-2026-08-11-120000.ips" for this fork, "OBS-....ips" for stock OBS. Upstream
      * hardcoded the @"OBS" prefix, which for this fork is wrong in both directions: it matches
      * nothing we produce (so crash detection never fires), and it DOES match the reports of the
      * operator's production OBS.app sitting in the same shared ~/Library/Logs/DiagnosticReports

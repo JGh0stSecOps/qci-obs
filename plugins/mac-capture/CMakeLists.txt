@@ -8,8 +8,10 @@ target_sources(
   PRIVATE
     audio-device-enum.c
     audio-device-enum.h
+    mac-audio-format.h
     mac-audio.c
     mac-display-capture.m
+    mac-process-tap-audio.m
     mac-sck-audio-capture.m
     mac-sck-common.h
     mac-sck-common.m
@@ -28,6 +30,9 @@ target_link_libraries(
     "$<LINK_LIBRARY:FRAMEWORK,Cocoa.framework>"
     "$<LINK_LIBRARY:FRAMEWORK,CoreAudio.framework>"
     "$<LINK_LIBRARY:FRAMEWORK,CoreFoundation.framework>"
+    # CGPreflightScreenCaptureAccess: the non-prompting check for the permission that actually
+    # gates process taps (Screen & System Audio Recording, NOT AudioCapture -- measured).
+    "$<LINK_LIBRARY:FRAMEWORK,CoreGraphics.framework>"
     "$<LINK_LIBRARY:FRAMEWORK,CoreMedia.framework>"
     "$<LINK_LIBRARY:FRAMEWORK,CoreVideo.framework>"
     "$<LINK_LIBRARY:FRAMEWORK,IOSurface.framework>"

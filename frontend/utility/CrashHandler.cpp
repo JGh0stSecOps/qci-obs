@@ -327,9 +327,9 @@ void CrashHandler::uploadCrashLogToServer()
 
 		QString message =
 			crashLogPath.empty()
-				? QStringLiteral("Crash log upload is disabled in QCi-OBS, and no local "
+				? QStringLiteral("Crash log upload is disabled in QCi-Studio, and no local "
 						 "crash report was found.")
-				: QStringLiteral("Crash log upload is disabled in QCi-OBS. The report is on "
+				: QStringLiteral("Crash log upload is disabled in QCi-Studio. The report is on "
 						 "this machine at:\n%1")
 					  .arg(QString::fromStdString(crashLogPath));
 

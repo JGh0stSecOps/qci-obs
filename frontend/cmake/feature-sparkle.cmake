@@ -2,7 +2,7 @@
 # Sparkle replaces the *host bundle* in place. Upstream's appcast (updates_$(ARCHS)_v2.xml) and
 # upstream's EdDSA public key were both baked into this tree's macOS preset, so the very first
 # accepted "update" would have downloaded official OBS Studio, verified it correctly against
-# upstream's key — the signature check PASSES, that is the point — and overwritten QCi-OBS.app
+# upstream's key — the signature check PASSES, that is the point — and overwritten QCi-Studio.app
 # with it. The operator would have lost the fork, silently, to a legitimate-looking update. This
 # is the same class of mistake as the bundle-identifier incident recorded in
 # cmake/macos/helpers.cmake: borrowing the parent project's identity hands the parent project
@@ -11,7 +11,7 @@
 # SPARKLE_APPCAST_URL and SPARKLE_PUBLIC_KEY are therefore empty in CMakePresets.json (JSON has
 # no comments, hence this note here). Empty is falsy in CMake, so the else() branch below is the
 # live path: no Sparkle framework, no updater sources, no SU* keys in Info.plist. Do not restore
-# them unless QCi-OBS grows its own appcast signed with its own key.
+# them unless QCi-Studio grows its own appcast signed with its own key.
 if(SPARKLE_APPCAST_URL AND SPARKLE_PUBLIC_KEY)
   find_library(SPARKLE Sparkle)
   mark_as_advanced(SPARKLE)

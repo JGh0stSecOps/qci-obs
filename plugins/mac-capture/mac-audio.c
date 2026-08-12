@@ -30,6 +30,51 @@
 #define TEXT_DEVICE obs_module_text("CoreAudio.Device")
 #define TEXT_DEVICE_DEFAULT obs_module_text("CoreAudio.Device.Default")
 
+/*
+ * The ceiling of HFP wideband (mSBC).  Narrowband CVSD is 8 kHz.  There is no Bluetooth
+ * audio profile that legitimately delivers 16 kHz, so a Bluetooth input at or below this
+ * rate IS the telephony profile -- it is a measurement, not a guess.  Deliberately NOT
+ * "< 44100": 22.05 and 24 kHz are legitimate choices and flagging them is the alarmist
+ * version of this feature.
+ */
+#define CA_NARROWBAND_MAX_HZ 16000
+
+/*
+ * QCi: honest device diagnostics.
+ *
+ * WHY THIS EXISTS.  The operator streams with a Shokz bone-conduction headset.  Opening its
+ * microphone forces macOS into HFP/SCO, which collapses the whole Bluetooth link to 16 kHz
+ * mono in BOTH directions -- so their music went tinny and their voice went to stream as
+ * wideband telephony.  That profile switch happens in bluetoothd/CoreAudio, far below OBS,
+ * and is NOT fixable from here; nothing in this file tries to.  What was fixable is that
+ * OBS knew the device was at 16 kHz and said so exactly once, in a LOG_INFO line at startup
+ * that nobody reads, while every meter and every encoder downstream cheerfully reported the
+ * 48 kHz mix rate because obs_source_output_audio() had already resampled it.  The operator
+ * found the fault by ear.  Refusing to hide that is the whole feature -- so this reports what
+ * IS, never a guess at intent, and never "fixes" it by resampling and pretending.
+ */
+struct coreaudio_diagnosis {
+	/* Rule A: a Bluetooth input whose best available rate is telephony-band. */
+	bool narrowband;
+	/* Rule B: Rule A holds AND the headset's other half is this Mac's default output
+	 * and can do better -- i.e. using this mic costs the operator their playback. */
+	bool profile_collapse;
+	/* Rule C: mono input where the paired endpoint proves the hardware can do stereo. */
+	bool mono_where_stereo;
+	/* Rule B, confirmed live rather than predicted: the output half is sitting AT the
+	 * narrowband rate right now even though it advertises better. */
+	bool collapsed_now;
+
+	uint32_t transport;
+	uint32_t max_rate;
+	uint32_t input_channels;
+
+	uint32_t peer_max_rate;
+	uint32_t peer_nominal_rate;
+	uint32_t peer_out_channels;
+	bool peer_is_default_output;
+};
+
 struct coreaudio_data {
 	char *device_name;
 	char *device_uid;
@@ -50,6 +95,8 @@ struct coreaudio_data {
 	enum audio_format format;
 	enum speaker_layout speakers;
 	bool enable_downmix;
+
+	struct coreaudio_diagnosis diag;
 
 	pthread_t reconnect_thread;
 	os_event_t *exit_event;
@@ -261,6 +308,326 @@ static char **coreaudio_get_channel_names(struct coreaudio_data *ca)
 	return channel_names;
 }
 
+/* ---------------------- QCi: honest device diagnostics ---------------------- */
+
+static uint32_t ca_transport_type(AudioDeviceID id)
+{
+	AudioObjectPropertyAddress addr = {kAudioDevicePropertyTransportType, kAudioObjectPropertyScopeGlobal,
+					   kAudioObjectPropertyElementMain};
+	UInt32 transport = 0;
+	UInt32 size = sizeof(transport);
+
+	if (AudioObjectGetPropertyData(id, &addr, 0, NULL, &size, &transport) != noErr)
+		return 0;
+
+	return (uint32_t)transport;
+}
+
+/*
+ * Read the device's best AVAILABLE rate, not its current nominal rate.
+ *
+ * The Shokz input's only available rate is 16000, so the verdict is permanently true and
+ * the warning is permanently correct.  Reading kAudioDevicePropertyNominalSampleRate instead
+ * would make it flicker every time the link renegotiates, which trains the operator to
+ * ignore it.  Measured on this machine: the property returns the same list at input and at
+ * output scope even on an input-only device, so global scope is right -- and it matches what
+ * coreaudio_init_buffer() already does for NominalSampleRate.
+ */
+static uint32_t ca_max_available_rate(AudioDeviceID id)
+{
+	AudioObjectPropertyAddress addr = {kAudioDevicePropertyAvailableNominalSampleRates,
+					   kAudioObjectPropertyScopeGlobal, kAudioObjectPropertyElementMain};
+	UInt32 size = 0;
+	uint32_t best = 0;
+
+	if (AudioObjectGetPropertyDataSize(id, &addr, 0, NULL, &size) != noErr || !size)
+		return 0;
+
+	AudioValueRange *ranges = bmalloc(size);
+	if (AudioObjectGetPropertyData(id, &addr, 0, NULL, &size, ranges) == noErr) {
+		size_t count = size / sizeof(AudioValueRange);
+		for (size_t i = 0; i < count; i++) {
+			if (ranges[i].mMaximum > (Float64)best)
+				best = (uint32_t)ranges[i].mMaximum;
+		}
+	}
+	bfree(ranges);
+
+	return best;
+}
+
+static uint32_t ca_nominal_rate(AudioDeviceID id)
+{
+	AudioObjectPropertyAddress addr = {kAudioDevicePropertyNominalSampleRate, kAudioObjectPropertyScopeGlobal,
+					   kAudioObjectPropertyElementMain};
+	Float64 rate = 0.0;
+	UInt32 size = sizeof(rate);
+
+	if (AudioObjectGetPropertyData(id, &addr, 0, NULL, &size, &rate) != noErr)
+		return 0;
+
+	return (uint32_t)rate;
+}
+
+static uint32_t ca_channel_count(AudioDeviceID id, AudioObjectPropertyScope scope)
+{
+	AudioObjectPropertyAddress addr = {kAudioDevicePropertyStreamConfiguration, scope,
+					   kAudioObjectPropertyElementMain};
+	UInt32 size = 0;
+	uint32_t channels = 0;
+
+	if (AudioObjectGetPropertyDataSize(id, &addr, 0, NULL, &size) != noErr || !size)
+		return 0;
+
+	AudioBufferList *bl = bmalloc(size);
+	if (AudioObjectGetPropertyData(id, &addr, 0, NULL, &size, bl) == noErr) {
+		for (UInt32 i = 0; i < bl->mNumberBuffers; i++)
+			channels += bl->mBuffers[i].mNumberChannels;
+	}
+	bfree(bl);
+
+	return channels;
+}
+
+static char *ca_copy_string_prop(AudioDeviceID id, AudioObjectPropertySelector selector)
+{
+	AudioObjectPropertyAddress addr = {selector, kAudioObjectPropertyScopeGlobal,
+					   kAudioObjectPropertyElementMain};
+	CFStringRef cf_str = NULL;
+	UInt32 size = sizeof(cf_str);
+	char *str;
+
+	if (AudioObjectGetPropertyData(id, &addr, 0, NULL, &size, &cf_str) != noErr || !cf_str)
+		return NULL;
+
+	str = cfstr_copy_cstr(cf_str, kCFStringEncodingUTF8);
+	CFRelease(cf_str);
+
+	return str;
+}
+
+static AudioDeviceID ca_default_output_device(void)
+{
+	AudioObjectPropertyAddress addr = {kAudioHardwarePropertyDefaultOutputDevice, kAudioObjectPropertyScopeGlobal,
+					   kAudioObjectPropertyElementMain};
+	AudioDeviceID id = kAudioObjectUnknown;
+	UInt32 size = sizeof(id);
+
+	if (AudioObjectGetPropertyData(kAudioObjectSystemObject, &addr, 0, NULL, &size, &id) != noErr)
+		return kAudioObjectUnknown;
+
+	return id;
+}
+
+/*
+ * Do two device UIDs name the two halves of one Bluetooth endpoint?
+ *
+ * Measured on this machine, the Shokz is TWO AudioDeviceIDs with different UIDs:
+ *   145 "B8-84-11-20-2B-4E:input"   16 kHz, 1 in, 0 out
+ *   139 "B8-84-11-20-2B-4E:output"  44.1 kHz, 0 in, 2 out
+ * They are joined only by the UID text before the final ':'.
+ */
+static bool ca_uid_endpoints_match(const char *a, const char *b)
+{
+	const char *sep_a = strrchr(a, ':');
+	const char *sep_b = strrchr(b, ':');
+	size_t len_a, len_b;
+
+	if (!sep_a || !sep_b)
+		return false;
+
+	len_a = (size_t)(sep_a - a);
+	len_b = (size_t)(sep_b - b);
+
+	return len_a && len_a == len_b && strncmp(a, b, len_a) == 0;
+}
+
+/*
+ * Find the output half of the Bluetooth headset this input belongs to.
+ *
+ * THE TRAP THIS AVOIDS.  The obvious test is `ca->device_id == default_output_device`.  That
+ * is NEVER true for a Bluetooth headset -- the two halves are separate AudioObjects -- so a
+ * guard written that way reads perfectly correct and silently never fires.
+ * kAudioDevicePropertyModelUID is no help either: it is the string "0 0" on BOTH halves.
+ * So join by name, with the UID prefix as a second opinion.  There is in-tree precedent:
+ * devices_match() in libobs/audio-monitoring/osx/coreaudio-enum-devices.c compares devices by
+ * kAudioDevicePropertyDeviceNameCFString and not by UID, and that name-join is exactly why
+ * the OBS_SOURCE_DO_NOT_SELF_MONITOR guard works on Bluetooth headsets at all.
+ */
+static bool ca_find_bluetooth_peer(AudioDeviceID input_id, struct coreaudio_diagnosis *diag)
+{
+	AudioObjectPropertyAddress addr = {kAudioHardwarePropertyDevices, kAudioObjectPropertyScopeGlobal,
+					   kAudioObjectPropertyElementMain};
+	UInt32 size = 0;
+	AudioDeviceID *ids;
+	AudioDeviceID default_out;
+	char *self_name, *self_uid;
+	size_t count;
+	bool found = false;
+
+	if (AudioObjectGetPropertyDataSize(kAudioObjectSystemObject, &addr, 0, NULL, &size) != noErr || !size)
+		return false;
+
+	self_name = ca_copy_string_prop(input_id, kAudioDevicePropertyDeviceNameCFString);
+	self_uid = ca_copy_string_prop(input_id, kAudioDevicePropertyDeviceUID);
+	if (!self_name && !self_uid) {
+		bfree(self_name);
+		bfree(self_uid);
+		return false;
+	}
+
+	default_out = ca_default_output_device();
+
+	ids = bmalloc(size);
+	count = size / sizeof(AudioDeviceID);
+
+	if (AudioObjectGetPropertyData(kAudioObjectSystemObject, &addr, 0, NULL, &size, ids) == noErr) {
+		for (size_t i = 0; i < count && !found; i++) {
+			char *name, *uid;
+			bool match;
+
+			if (ids[i] == input_id)
+				continue;
+			/* Only ever pair with another Bluetooth endpoint.  This is also what keeps
+			 * unrelated devices whose UIDs happen to contain ':' (AirPlay, for one) out. */
+			if (ca_transport_type(ids[i]) != kAudioDeviceTransportTypeBluetooth)
+				continue;
+			if (!ca_channel_count(ids[i], kAudioDevicePropertyScopeOutput))
+				continue;
+
+			name = ca_copy_string_prop(ids[i], kAudioDevicePropertyDeviceNameCFString);
+			uid = ca_copy_string_prop(ids[i], kAudioDevicePropertyDeviceUID);
+
+			match = (self_name && name && strcmp(self_name, name) == 0) ||
+				(self_uid && uid && ca_uid_endpoints_match(self_uid, uid));
+
+			if (match) {
+				diag->peer_out_channels = ca_channel_count(ids[i], kAudioDevicePropertyScopeOutput);
+				diag->peer_max_rate = ca_max_available_rate(ids[i]);
+				diag->peer_nominal_rate = ca_nominal_rate(ids[i]);
+				diag->peer_is_default_output = (ids[i] == default_out);
+				found = true;
+			}
+
+			bfree(name);
+			bfree(uid);
+		}
+	}
+
+	bfree(ids);
+	bfree(self_name);
+	bfree(self_uid);
+
+	return found;
+}
+
+static void coreaudio_diagnose(struct coreaudio_data *ca)
+{
+	struct coreaudio_diagnosis *diag = &ca->diag;
+
+	memset(diag, 0, sizeof(*diag));
+
+	/* Only inputs can force a profile switch; an output capture is already the sink. */
+	if (!ca->input)
+		return;
+
+	diag->transport = ca_transport_type(ca->device_id);
+	diag->max_rate = ca_max_available_rate(ca->device_id);
+	diag->input_channels = ca->available_channels;
+
+	/* Rule A -- NARROWBAND.  A wired 16 kHz device is a legitimate choice, so this is
+	 * gated on Bluetooth: over Bluetooth, 16 kHz is not a choice, it is HFP. */
+	if (diag->transport != kAudioDeviceTransportTypeBluetooth)
+		return;
+	if (!diag->max_rate || diag->max_rate > CA_NARROWBAND_MAX_HZ)
+		return;
+
+	diag->narrowband = true;
+
+	if (!ca_find_bluetooth_peer(ca->device_id, diag))
+		return;
+
+	/* Rule B -- PROFILE COLLAPSE.  The headset's own other half is this Mac's default
+	 * output AND can do better than telephony band, so opening this mic costs the operator
+	 * their playback quality.  Both halves of that are measured, neither is assumed. */
+	diag->profile_collapse = diag->peer_is_default_output && diag->peer_max_rate > CA_NARROWBAND_MAX_HZ;
+
+	/* ...and is it already collapsed, or merely about to be?  Say which. */
+	diag->collapsed_now = diag->profile_collapse && diag->peer_nominal_rate &&
+			      diag->peer_nominal_rate <= CA_NARROWBAND_MAX_HZ;
+
+	/* Rule C -- MONO WHERE STEREO EXISTS.  Read available_channels, NOT
+	 * obs_source_get_speaker_layout(): when enable_downmix is false,
+	 * coreaudio_init_buffer() overwrites mChannelsPerFrame with the OBS mix width, so a
+	 * mono device is presented to libobs as fake stereo with a -1 channel map.  The layout
+	 * would say "stereo" and be wrong.  Sample rate has no such distortion. */
+	diag->mono_where_stereo = diag->input_channels == 1 && diag->peer_out_channels >= 2;
+}
+
+/* 44100 must read "44.1 kHz", not "44 kHz".  The whole point of this feature is that the
+ * numbers are trustworthy, and a rate that quietly rounds is a number nobody can check. */
+static const char *ca_khz(uint32_t hz, char buf[16])
+{
+	if (hz % 1000 == 0)
+		snprintf(buf, 16, "%" PRIu32, hz / 1000);
+	else
+		snprintf(buf, 16, "%.1f", (double)hz / 1000.0);
+
+	return buf;
+}
+
+/*
+ * Compose the operator-facing sentence.  Returns false when there is nothing to say.
+ *
+ * House rule: state what IS, in measured numbers, and never guess at intent.  Rule B is
+ * phrased as what WILL happen when the peer is still at full rate, because the warning fires
+ * when the source is created -- before the collapse -- which is more useful than after.
+ */
+static bool coreaudio_format_notice(const struct coreaudio_data *ca, struct dstr *out)
+{
+	const struct coreaudio_diagnosis *diag = &ca->diag;
+	char khz[16];
+
+	if (!diag->narrowband)
+		return false;
+
+	dstr_init(out);
+	dstr_printf(out, "%s: %s kHz", ca->device_name ? ca->device_name : "device", ca_khz(diag->max_rate, khz));
+
+	if (diag->mono_where_stereo)
+		dstr_cat(out, " mono");
+
+	/* Name the actual codec. 16 kHz is HFP wideband (mSBC); 8 kHz is narrowband (CVSD).
+	 * Calling 8 kHz "wideband" would be the kind of confidently-wrong detail that makes an
+	 * operator stop believing the rest of the message. */
+	dstr_catf(out,
+		  ", Bluetooth. This is HFP %s telephony -- the only profile that carries a Bluetooth "
+		  "microphone, so it is the ceiling for this device, not a setting.",
+		  diag->max_rate > 8000 ? "wideband (mSBC)" : "narrowband (CVSD)");
+
+	if (diag->profile_collapse) {
+		char peer_now[16], peer_best[16];
+
+		if (diag->collapsed_now) {
+			dstr_catf(out,
+				  " This headset is also this Mac's default output, and its playback side is at "
+				  "%s kHz right now although it can do %s kHz -- the link has already collapsed.",
+				  ca_khz(diag->peer_nominal_rate, peer_now), ca_khz(diag->peer_max_rate, peer_best));
+		} else {
+			dstr_catf(out,
+				  " This headset is also this Mac's default output and can do %s kHz, so playback "
+				  "drops to telephony band while this microphone is open.",
+				  ca_khz(diag->peer_max_rate, peer_best));
+		}
+		dstr_cat(out, " That is a Bluetooth profile switch below CoreAudio; OBS cannot undo it. "
+			      "Use a different microphone to keep full-rate playback.");
+	}
+
+	return true;
+}
+
+/* -------------------------------------------------------------------------- */
+
 static bool coreaudio_init_format(struct coreaudio_data *ca)
 {
 	AudioStreamBasicDescription desc;
@@ -343,6 +710,8 @@ static bool coreaudio_init_format(struct coreaudio_data *ca)
 	}
 
 	ca->sample_rate = (uint32_t)desc.mSampleRate;
+
+	coreaudio_diagnose(ca);
 
 	return true;
 }
@@ -683,7 +1052,19 @@ static bool coreaudio_init(struct coreaudio_data *ca)
 	if (!coreaudio_start(ca))
 		goto fail;
 
-	blog(LOG_INFO, "coreaudio: Device '%s' [%" PRIu32 " Hz] initialized", ca->device_name, ca->sample_rate);
+	blog(LOG_INFO, "coreaudio: Device '%s' [%" PRIu32 " Hz, %" PRIu32 " ch] initialized", ca->device_name,
+	     ca->sample_rate, ca->available_channels);
+
+	/* This used to be the ONE place OBS mentioned the device's real rate, at LOG_INFO, once,
+	 * at startup.  It is now the third copy -- the mixer strip and the properties dialog both
+	 * carry it too -- and it is a warning, because a silent degradation being silent is the
+	 * bug we are fixing. */
+	struct dstr notice;
+	if (coreaudio_format_notice(ca, &notice)) {
+		blog(LOG_WARNING, "coreaudio: DEGRADED INPUT FORMAT -- %s", notice.array);
+		dstr_free(&notice);
+	}
+
 	return ca->au_initialized;
 
 fail:
@@ -1004,6 +1385,23 @@ static obs_properties_t *coreaudio_properties(bool input, void *data)
 	}
 
 	obs_property_set_modified_callback2(property, coreaudio_device_changed, ca);
+
+	/* Sits directly under the device combo, so it appears at the moment the operator picks
+	 * the device -- which is when the decision is actually being made.  The mixer strip
+	 * carries the two-word version for the rest of the session; this is where there is room
+	 * to explain why.  Left with an empty settings value and no long description on purpose:
+	 * properties-view then spans it full width and styles it "text-warning". */
+	if (ca != NULL && ca->au_initialized) {
+		struct dstr notice;
+
+		if (coreaudio_format_notice(ca, &notice)) {
+			obs_property_t *warn = obs_properties_add_text(props, "qci_format_notice", notice.array,
+								      OBS_TEXT_INFO);
+			obs_property_text_set_info_type(warn, OBS_TEXT_INFO_WARNING);
+			obs_property_text_set_info_word_wrap(warn, true);
+			dstr_free(&notice);
+		}
+	}
 
 	property = obs_properties_add_bool(props, "enable_downmix", obs_module_text("CoreAudio.Downmix"));
 	obs_property_set_modified_callback2(property, coreaudio_downmix_changed, ca);
