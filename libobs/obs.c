@@ -820,8 +820,54 @@ void obs_free_video_mix(struct obs_core_video_mix *video)
 	bfree(video);
 }
 
+/* Outputs keep a borrowed, unowned video_t * (stored by obs_output_create() and
+ * obs_output_set_media(), obs-output.c) and are never told when the mix that owns it is
+ * freed.  That stale pointer is a real crash, not speculative hardening:
+ *
+ *   EXC_BAD_ACCESS / KERN_INVALID_ADDRESS at 0x00000000b8154090
+ *   libobs obs_output_get_width -> video_output_get_width -> get_const_root
+ *   obs-websocket (GetOutputList) -> libobs obs_enum_outputs
+ *
+ * The virtual camera reaches it on every stop: DestroyVirtualCamView() calls
+ * obs_view_remove(), the graphics thread then frees the mix's video_t in output_frames(),
+ * and virtualCam->video dangles for the rest of the profile until something enumerates the
+ * outputs.  video_output_get_width()'s existing "return video ? ... : 0" guard cannot help
+ * because the pointer is freed, not NULL -- detaching it here is what makes that guard
+ * work, and makes obs_output_video()/obs_output_actual_start() fail cleanly instead.
+ *
+ * Pass NULL to detach every output, for the paths that free all mixes at once.
+ *
+ * MUST NOT be called with obs->video.mixes_mutex held.  This takes outputs_mutex, and an
+ * obs_enum_outputs() callback holds outputs_mutex while free to call obs_video_active(),
+ * which takes mixes_mutex; nesting here would be an ABBA inversion.  Callers detach either
+ * side of their mix walk, never inside it. */
+void obs_outputs_detach_video(video_t *video)
+{
+	/* obs_free_data() destroys every output *and* outputs_mutex before obs_free_video()
+	 * runs, so past that point there is nothing to detach and no mutex to take. */
+	if (!obs->data.valid)
+		return;
+
+	pthread_mutex_lock(&obs->data.outputs_mutex);
+
+	struct obs_output *output = obs->data.first_output;
+	while (output) {
+		if (output->video && (!video || output->video == video)) {
+			blog(LOG_DEBUG, "Output '%s': detaching video output that is being destroyed",
+			     output->context.name);
+			output->video = NULL;
+		}
+		output = (struct obs_output *)output->context.next;
+	}
+
+	pthread_mutex_unlock(&obs->data.outputs_mutex);
+}
+
 static void obs_free_video(void)
 {
+	/* Every mix below is about to be freed, so no output may keep pointing at one. */
+	obs_outputs_detach_video(NULL);
+
 	pthread_mutex_lock(&obs->video.mixes_mutex);
 	size_t num_views = 0;
 	for (size_t i = 0; i < obs->video.mixes.num; i++) {

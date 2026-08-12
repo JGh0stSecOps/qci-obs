@@ -56,7 +56,7 @@ API_AVAILABLE(macos(13.0)) static void sck_audio_capture_destroy(void *data)
 
 API_AVAILABLE(macos(13.0)) static bool init_audio_screen_stream(struct screen_capture *sc)
 {
-    SCContentFilter *content_filter;
+    SCContentFilter *content_filter = nil;
     if (sc->capture_failed) {
         sc->capture_failed = false;
         obs_source_update_properties(sc->source);
@@ -102,6 +102,21 @@ API_AVAILABLE(macos(13.0)) static bool init_audio_screen_stream(struct screen_ca
         } break;
     }
     os_sem_post(sc->shareable_content_available);
+
+    /* Crashed OBS (EXC_BAD_ACCESS at 0x20 in objc_retain, called from
+     * -[SCStream initWithFilter:configuration:delegate:]): "type" comes straight from
+     * obs_data with no validation, so a caller that is not the properties combo box -- an
+     * obs-websocket CreateInput/SetInputSettings, for example -- can pass a value outside
+     * ScreenCaptureAudioStreamType. The switch above has no case for it and clang does not
+     * warn on an enum-typed scrutinee, so content_filter stayed uninitialized and a stale
+     * stack value was retained. Bail out inert (as the invalid-target paths do) instead. */
+    if (content_filter == nil) {
+        MACCAP_ERR("init_audio_screen_stream: Unsupported audio capture type: %d\n", sc->audio_capture_type);
+        sc->disp = NULL;
+        os_event_init(&sc->stream_start_completed, OS_EVENT_TYPE_MANUAL);
+        return true;
+    }
+
     [sc->stream_properties setQueueDepth:8];
 
     [sc->stream_properties setCapturesAudio:TRUE];

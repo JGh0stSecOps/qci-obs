@@ -268,6 +268,10 @@ void obs_canvas_clear_mix(obs_canvas_t *canvas)
 	if (!canvas->mix)
 		return;
 
+	/* Same unowned-video_t hazard as obs_view_remove(); detach before taking mixes_mutex
+	 * (see obs_outputs_detach_video() in obs.c for the crash this prevents). */
+	obs_outputs_detach_video(canvas->mix->video);
+
 	pthread_mutex_lock(&obs->video.mixes_mutex);
 	for (size_t i = 0; i < obs->video.mixes.num; i++) {
 		struct obs_core_video_mix *mix = obs->video.mixes.array[i];

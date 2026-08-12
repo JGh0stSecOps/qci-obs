@@ -1,0 +1,391 @@
+@OBSThemeMeta {
+    name: 'QCi';
+    id: 'com.qci.QCi';
+    extends: 'com.obsproject.Yami';
+    author: 'JGh0stSecOps';
+    dark: 'true';
+}
+
+/*
+ * QCi -- the rig's own design language, worn by OBS.
+ *
+ * WHY THIS FILE EXTENDS YAMI RATHER THAN STANDING ALONE.
+ * OBSApp_Themes.cpp permits a base theme (.obt) to name another base theme as its parent
+ * (FindThemes() only rejects a base whose ancestor is NOT a base). Extending Yami means this
+ * file inherits ~2700 lines of widget rules that already cover every dialog OBS ships, so
+ * nothing falls back to a foreign colour, and it stays a single ADDITIVE file with zero
+ * merge cost against upstream. QCi appears in Settings > Appearance as its own base theme
+ * because isBaseTheme is decided by the .obt extension, not by the absence of `extends`.
+ *
+ * ------------------------------------------------------------------------------------
+ * THE ONE RULE THAT DECIDED THE PALETTE: GREEN AND #ffe82c ARE QC, NOT CHROME.
+ *
+ * From ~/obs-assets/qci/qci-viz.html, where this was learned the hard way:
+ *   "These bars used to be #22c55e with #8cf9b4 highlights -- which is QC's own body green
+ *    and his own highlight [...] He did not blend into the background by accident; he was
+ *    painted in it. Anything that sits BEHIND him now takes cyan/magenta, leaving green and
+ *    #ffe82c yellow to mean QC and nothing else."
+ *
+ * The OBS window is the largest thing that sits behind QC -- the preview literally contains
+ * him. So the application chrome takes CYAN (#22d3ee, the rig's --c-num) as its structure
+ * hue, and MAGENTA (#f02fb8, --c-acc) as accent only, never structure.
+ *
+ * This is the one place QCi deliberately diverges from ~/tiktok-rig/events/control.html,
+ * whose structure hue IS green. control.html is a 7-inch panel that never shows QC; OBS
+ * shows him at 1920x1080 in the middle of the screen. Same rule, opposite answer.
+ *
+ * Green survives here in exactly three roles, all of them QC's own:
+ *   - .text-success                       (OK)
+ *   - the audio meter                     (his voice -- the rig's LED meter, ported below)
+ *   - VolumeControl.volume-preview        (a source about to be him)
+ * #ffe82c is not in this file at all. Warnings use #eab308, the rig's separate --c-hot.
+ *
+ * ------------------------------------------------------------------------------------
+ * EVERY COLOUR IS EITHER A RIG HEX OR DERIVED FROM ONE.
+ * Rig hexes used verbatim:
+ *   #22d3ee #f02fb8 #22c55e #8cf9b4 #eab308 #ef4444 #0f2a1b #a78bfa #818cf8 #e8e8f2
+ *   #07070b #0a0a0f #0c0c12 #101018 #05080a
+ * Everything else is a value-scale step on one of those hues, chosen by SOLVING for a
+ * contrast threshold rather than by eye. Measurements are in the comments; the script that
+ * produced them checks all 47 pairs this theme actually paints.
+ *   AA text  >= 4.5:1     AA non-text component >= 3.0:1
+ *
+ * WHAT THE .obt FORMAT CANNOT EXPRESS (for the layout overhaul to carry):
+ *   - CORNER BRACKETS. The rig frames a pane with a top-left and a bottom-right bracket and
+ *     never four sides. Qt QSS has no ::before/::after, so a bracket needs either a border-
+ *     image 9-slice asset or a paintEvent. Radius 0 below is the closest this file gets.
+ *   - STEPPED MOTION. QSS has no @keyframes and no transition; nothing in this file animates,
+ *     so the rig's steps(2,end) / 170ms grid / sub-3Hz photosensitivity constraint is NOT
+ *     enforced here -- it is simply not reachable. Any animation OBS already runs (the
+ *     recording-active pulse, spinners) is C++ and untouched by this theme.
+ *   - DISCRETE LED CELLS. VolumeMeter paints a continuous bar in C++; only its colours are
+ *     themeable. The rig's cell strip needs a QSS-driven repeating gradient the widget does
+ *     not offer, or a meter subclass.
+ *   - TYPEFACE. The rig is ui-monospace with tabular-nums and uppercase labels. Forcing a
+ *     mono family on QWidget reflows every .ui file in the app, which is out of scope here.
+ */
+
+@OBSThemeVars {
+    /* ------------------------------------------------------------------ *
+     * CYAN -- THE STRUCTURE HUE. This is Yami's "blue" ramp, re-hued.
+     * blue1 is the rig's --c-num verbatim; 2..6 are value steps on it.
+     * blue2/blue3 are the two steps that get used as FILLS under white
+     * text, so both were solved for >= 4.5:1 against --text rather than
+     * picked: #E8E8F2 on blue2 = 4.66:1, on blue3 = 6.55:1.
+     * ------------------------------------------------------------------ */
+    --blue1: #22D3EE;
+    --blue2: #126D7B;
+    --blue3: #0D5462;
+    --blue4: #0A424D;
+    --blue5: #073039;
+    --blue6: #051F26;
+
+    /* TEAL -- unused by Yami's QSS, kept on the same hue so a plugin that
+     * reaches for it cannot introduce a seventh hue. */
+    --teal1: #7DE9F8;
+    --teal2: #22D3EE;
+    --teal3: #126D7B;
+    --teal4: #0D5462;
+    --teal5: #073039;
+    --teal6: #051F26;
+
+    /* MAGENTA -- ACCENT ONLY, never structure. pink2 is the rig's --c-acc.
+     * Yami's QSS never uses this ramp for chrome; here it is the audio
+     * meter's leading edge (see VolumeMeter below) and nothing else. */
+    --pink1: #FF8FDC;
+    --pink2: #F02FB8;
+    --pink3: #A81F80;
+    --pink4: #851862;
+    --pink5: #5C1044;
+    --pink6: #3A0A2B;
+
+    /* GREEN -- RESERVED FOR QC. Only .text-success, the meter, and the
+     * "preview" mixer state may spend it. green1/green2 are the rig's
+     * --c-lbl and --c-grn; green5 is the rig's --m-unlit meter cell.
+     * green3/green4 are the two steps Yami puts white text on, so they
+     * were solved downward until white passed: 5.06:1 and 6.85:1. */
+    --green1: #8CF9B4;
+    --green2: #22C55E;
+    --green3: #157F45;
+    --green4: #12683A;
+    --green5: #0F2A1B;
+    --green6: #0A1F14;
+
+    /* AMBER -- WARN. yellow2 is the rig's --c-hot. Deliberately NOT
+     * #ffe82c: that is QC's eye colour and appears nowhere in the chrome. */
+    --yellow1: #FACC15;
+    --yellow2: #EAB308;
+    --yellow3: #9A7605;
+    --yellow4: #7A5D04;
+    --yellow5: #4A3903;
+    --yellow6: #2E2302;
+
+    /* RED -- FAULT, and the live/recording state. red2 is the rig's --c-bad. */
+    --red1: #FF8A8A;
+    --red2: #EF4444;
+    --red3: #B02A2A;
+    --red4: #8A2020;
+    --red5: #5C1515;
+    --red6: #3A0D0D;
+
+    /* PURPLE -- the "hidden source" state only. purple1/purple2 are rig
+     * hexes lifted from the overlays. */
+    --purple1: #A78BFA;
+    --purple2: #818CF8;
+    --purple3: #5B4BC4;
+    --purple4: #473A9C;
+    --purple5: #332B70;
+    --purple6: #211C4A;
+
+    /* ------------------------------------------------------------------ *
+     * SURFACES AND LINES. grey8..grey4 are the rig's own cool near-blacks,
+     * used verbatim and in their existing order -- surfaces stay NEUTRAL,
+     * exactly as in the overlays. grey3..grey1 are the LINES, and those do
+     * take the structure hue, mirroring the rig where a plate is neutral
+     * and its hairline is an alpha of the structure colour.
+     * grey1 is the input/button border and was solved for the 3:1 non-text
+     * threshold against the input fill: #157A8A on #101018 = 3.77:1.
+     * ------------------------------------------------------------------ */
+    --grey8: #05080A;   /* preview / deepest hole                          */
+    --grey7: #07070B;   /* window ground -- control.html --c-gnd           */
+    --grey6: #0A0A0F;   /* base plate -- the overlays' ground              */
+    --grey5: #0C0C12;   /* raised block                                    */
+    --grey4: #101018;   /* input + button fill -- the overlays' PLATE      */
+    --grey3: #0F3441;   /* pressed / hover fill                            */
+    --grey2: #125060;   /* decorative hairline, frame edge   (2.20:1)      */
+    --grey1: #157A8A;   /* component border, scrollbar handle (3.77:1)     */
+
+    /* TEXT. white2 is the rig's cool near-white and is what --text points
+     * at; pure white is kept only for text sitting on a coloured fill.
+     * white5 is derived the rig's way -- rgba(#E8E8F2,.58) over the plate
+     * -- which composites to #8B8B93; it is stepped to #7E7E90 so it still
+     * clears 4.5:1 on the LIGHTEST surface it can land on (--input_bg,
+     * 4.75:1) rather than only on the darkest. */
+    --white1: #FFFFFF;
+    --white2: #E8E8F2;
+    --white3: #C7C7D4;
+    --white4: #A2A2B2;
+    --white5: #7E7E90;
+
+    --black1: #04070A;
+    --black2: #0F0F16;
+    --black3: #22222E;
+    --black4: #333341;
+    --black5: #4A4A5A;
+
+    /* ------------------------------------------------------------------ *
+     * SEMANTIC BINDINGS
+     * ------------------------------------------------------------------ */
+    --bg_window: var(--grey7);
+    --bg_base: var(--grey6);
+    --bg_preview: var(--grey8);
+
+    --primary: var(--blue3);
+    --primary_light: var(--blue2);
+    --primary_lighter: var(--blue1);
+    --primary_dark: var(--blue4);
+    --primary_darker: var(--blue5);
+
+    /* Yami points --warning at yellow3, which is a fill-weight step being
+     * used as TEXT (.text-warning). At this ramp that is 3.1:1 on the
+     * window. Re-point both at the ramp's canonical step: 10.49:1 and
+     * 5.34:1 respectively. */
+    --warning: var(--yellow2);
+    --danger: var(--red2);
+
+    --text: var(--white2);          /* 16.52:1 on --bg_window            */
+    --text_light: var(--white1);    /* for text on a coloured fill       */
+    --text_muted: var(--white5);    /* 5.05:1 on --bg_window             */
+    --text_disabled: var(--text_muted);
+    --text_inactive: var(--white2);
+
+    --highlight_color: var(--primary_lighter);
+
+    /* Lines. Yami hangs borders off grey4, which in this ramp is a FILL
+     * and would make every border invisible; each is moved one or two
+     * steps up into the line range. */
+    --border_color: var(--grey2);
+
+    --scrollbar_bg: var(--grey7);
+    --scrollbar_handle: var(--grey1);       /* 3.93:1 on the track        */
+    --scrollbar_hover: var(--primary_lighter);
+    --scrollbar_down: var(--primary_light);
+    --scrollbar_border: var(--grey2);
+
+    --separator_hover: var(--primary_lighter);
+
+    /* SQUARE. --rad:0 in control.html: this rig does not round anything.
+     * These are the only three radius tokens Yami defines as literals; the
+     * other two are calc()s off a height and are overridden with them. */
+    --border_radius: 0px;
+    --border_radius_small: 0px;
+    --border_radius_large: 0px;
+    --toggle_radius: 0px;
+    --action_row_collapse_radius: 0px;
+
+    /* Inputs. Focus recolours the border to full-strength cyan and the fill
+     * goes DARKER, which is what .fld:focus does in control.html. */
+    --input_bg: var(--grey4);
+    --input_bg_hover: var(--grey7);
+    --input_bg_focus: var(--grey7);
+    --input_border: var(--grey1);
+    --input_border_hover: var(--primary_lighter);
+    --input_border_focus: var(--primary_lighter);
+
+    --list_item_bg_selected: var(--primary);
+    --list_item_bg_hover: var(--primary_light);
+
+    /* Buttons. The rig's button is an OUTLINE that fills on press, so the
+     * resting border is the dim structure step and hover takes it to full
+     * strength -- .btn / .btn:hover in control.html. Yami's default hides
+     * the border by aliasing it to the fill; that is undone here. */
+    --button_bg: var(--grey4);
+    --button_bg_hover: var(--grey3);
+    --button_bg_down: var(--primary_dark);
+    --button_bg_disabled: var(--grey6);
+    --button_border: var(--grey1);          /* 4.01:1 on --bg_window      */
+    --button_border_hover: var(--primary_lighter);
+    --button_border_focus: var(--primary_lighter);
+
+    --tab_bg: var(--grey6);
+    --tab_bg_hover: var(--grey3);
+    --tab_bg_down: var(--primary);
+    --tab_bg_disabled: var(--grey6);
+    --tab_border: var(--grey2);
+    --tab_border_hover: var(--primary_lighter);
+    --tab_border_focus: var(--primary_lighter);
+    --tab_border_selected: var(--primary_lighter);
+
+    /* Qt palette. Anything the stylesheet does not reach -- native menus,
+     * tooltips, item-view fallbacks -- lands here, so it is bound too. */
+    --palette_window: var(--bg_window);
+    --palette_windowText: var(--text);
+    --palette_base: var(--bg_base);
+
+    --palette_light: var(--grey2);
+    --palette_mid: var(--grey7);
+    --palette_dark: var(--grey6);
+
+    --palette_highlight: var(--primary);
+    --palette_highlightedText: var(--text);
+
+    --palette_text: var(--text);
+    --palette_link: var(--primary_lighter);         /* 10.93:1            */
+    --palette_linkVisited: var(--primary_light);
+
+    --palette_button: var(--button_bg);
+    --palette_buttonText: var(--text);
+
+    --palette_text_active: var(--text);
+    --palette_text_disabled: var(--text_disabled);
+    --palette_text_inactive: var(--text_inactive);
+}
+
+/* ==================================================================== *
+ * The four rules the variable surface alone cannot reach.
+ * ==================================================================== */
+
+/* 1. Yami paints .text-bright with --primary_light. That step is a FILL
+ *    colour in this ramp (it has to be dark enough to carry white text),
+ *    so as type on the window it measures 2.55:1. The bright step is the
+ *    right one for type: 11.13:1. */
+.text-bright {
+    color: var(--primary_lighter);
+}
+
+/* 2. THE AUDIO METER IS THE RIG'S LED METER, PORTED.
+ *    control.html section 8: unlit #0f2a1b, lit #22c55e, hot band #8cf9b4,
+ *    leading edge #f02fb8 -- and it notes that amber "never appears in a
+ *    meter cell; it appears in the dB READOUT near clip". So the three
+ *    zone backgrounds collapse to the single unlit cell colour and the
+ *    three foregrounds become lit / hot / tip. This is the one place the
+ *    chrome is allowed green: it is QC's voice.
+ *    Measured against the unlit cell: 6.74:1, 11.94:1, 4.24:1.
+ *    magnitudeColor is a hardcoded rgb(0,0,0) upstream; the rig's ink is
+ *    near-black-cool, so it is re-pointed at black1.
+ *    `color` is the dB tick label. Yami sets it to grey3, which in this
+ *    ramp is a fill (1.4:1 on the meter background) -- moved to muted. */
+VolumeMeter {
+    color: var(--text_muted);
+
+    qproperty-backgroundNominalColor: var(--green5);
+    qproperty-backgroundWarningColor: var(--green5);
+    qproperty-backgroundErrorColor: var(--green5);
+    qproperty-foregroundNominalColor: var(--green2);
+    qproperty-foregroundWarningColor: var(--green1);
+    qproperty-foregroundErrorColor: var(--pink2);
+
+    qproperty-magnitudeColor: var(--black1);
+    qproperty-majorTickColor: var(--white4);
+    qproperty-minorTickColor: var(--grey1);
+}
+
+/* 3. SQUARE CHECKBOXES. Yami's indicator SVGs are rounded rectangles in a
+ *    fixed #B0AFB3, which is both a foreign hue and the wrong shape for a
+ *    rig whose --rad is 0. Replaced with square, structure-hue ones that
+ *    fill on check and carry a dark ink tick -- .tg[aria-checked] in
+ *    control.html. Six new files under themes/QCi/, no upstream file
+ *    touched. */
+QCheckBox::indicator:unchecked,
+QGroupBox::indicator:unchecked,
+QTableView::indicator:unchecked {
+    image: url(theme:QCi/checkbox_unchecked.svg);
+}
+
+QCheckBox::indicator:unchecked:hover,
+QGroupBox::indicator:unchecked:hover,
+QTableView::indicator:unchecked:hover {
+    image: url(theme:QCi/checkbox_unchecked_focus.svg);
+}
+
+QCheckBox::indicator:checked,
+QGroupBox::indicator:checked,
+QTableView::indicator:checked {
+    image: url(theme:QCi/checkbox_checked.svg);
+}
+
+QCheckBox::indicator:checked:hover,
+QGroupBox::indicator:checked:hover,
+QTableView::indicator:checked:hover {
+    image: url(theme:QCi/checkbox_checked_focus.svg);
+}
+
+QCheckBox::indicator:checked:disabled,
+QGroupBox::indicator:checked:disabled,
+QTableView::indicator:checked:disabled {
+    image: url(theme:QCi/checkbox_checked_disabled.svg);
+}
+
+QCheckBox::indicator:unchecked:disabled,
+QGroupBox::indicator:unchecked:disabled,
+QTableView::indicator:unchecked:disabled {
+    image: url(theme:QCi/checkbox_unchecked_disabled.svg);
+}
+
+/* The settings pages use idian's checkbox, which reaches for the same two
+ * focus assets by path. */
+idian--CheckBox.keyFocus::indicator,
+idian--Row.hover > idian--CheckBox.row-buddy::indicator {
+    image: url(theme:QCi/checkbox_unchecked_focus.svg);
+}
+
+idian--CheckBox.keyFocus.checked::indicator,
+idian--Row.hover > idian--CheckBox.row-buddy.checked::indicator {
+    image: url(theme:QCi/checkbox_checked_focus.svg);
+}
+
+/* 4. Slider handles are a white pill upstream (--white1 + --border_radius).
+ *    Radius is already 0 by the variable above; the fill moves to full-
+ *    strength structure, which is what .fld--range's thumb is in
+ *    control.html -- a hard-edged block, not a knob. */
+QSlider::handle {
+    background-color: var(--primary_lighter);
+}
+
+QSlider::handle:hover {
+    background-color: var(--white2);
+}
+
+QSlider::handle:pressed {
+    background-color: var(--primary_light);
+}

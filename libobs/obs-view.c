@@ -170,12 +170,26 @@ void obs_view_remove(obs_view_t *view)
 	if (!view)
 		return;
 
+	/* Clearing the view dooms the mix: the graphics thread frees its video_t the next time
+	 * through output_frames().  Outputs hold that pointer unowned, so collect the doomed
+	 * video_t's and detach them after dropping mixes_mutex (see obs_outputs_detach_video()
+	 * in obs.c -- this is the virtual-camera path behind the obs_output_get_width()
+	 * EXC_BAD_ACCESS at 0xb8154090). */
+	DARRAY(video_t *) detached;
+	da_init(detached);
+
 	pthread_mutex_lock(&obs->video.mixes_mutex);
 	for (size_t i = 0, num = obs->video.mixes.num; i < num; i++) {
-		if (obs->video.mixes.array[i]->view == view)
+		if (obs->video.mixes.array[i]->view == view) {
 			obs->video.mixes.array[i]->view = NULL;
+			da_push_back(detached, &obs->video.mixes.array[i]->video);
+		}
 	}
 	pthread_mutex_unlock(&obs->video.mixes_mutex);
+
+	for (size_t i = 0; i < detached.num; i++)
+		obs_outputs_detach_video(detached.array[i]);
+	da_free(detached);
 }
 
 void obs_view_enum_video_info(obs_view_t *view, bool (*enum_proc)(void *, struct obs_video_info *), void *param)

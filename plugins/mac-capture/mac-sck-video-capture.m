@@ -73,7 +73,7 @@ API_AVAILABLE(macos(12.5)) static void sck_video_capture_destroy(void *data)
 
 API_AVAILABLE(macos(12.5)) static bool init_screen_stream(struct screen_capture *sc)
 {
-    SCContentFilter *content_filter;
+    SCContentFilter *content_filter = nil;
     if (sc->capture_failed) {
         sc->capture_failed = false;
         obs_source_update_properties(sc->source);
@@ -193,6 +193,17 @@ API_AVAILABLE(macos(12.5)) static bool init_screen_stream(struct screen_capture 
         } break;
     }
     os_sem_post(sc->shareable_content_available);
+
+    /* Same defect as init_audio_screen_stream: an out-of-range "type" from obs_data (nothing
+     * validates it on the obs-websocket path) matches no case above, leaving content_filter
+     * uninitialized until -[SCStream initWithFilter:...] retains the garbage -- crash was
+     * EXC_BAD_ACCESS at 0x20 in objc_retain. Bail out inert rather than taking OBS down. */
+    if (content_filter == nil) {
+        MACCAP_ERR("init_screen_stream: Unsupported capture type: %d\n", sc->capture_type);
+        sc->disp = NULL;
+        os_event_init(&sc->stream_start_completed, OS_EVENT_TYPE_MANUAL);
+        return true;
+    }
 
     struct obs_video_info video_info;
     bool hasVideoInfo = obs_get_video_info(&video_info);
