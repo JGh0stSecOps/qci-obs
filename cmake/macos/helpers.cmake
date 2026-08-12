@@ -52,9 +52,23 @@ function(set_target_properties_obs target)
           XCODE_EMBED_PLUGINS_CODE_SIGN_ON_COPY YES
       )
 
+      # ⚠️ THIS FORK MUST NOT CLAIM UPSTREAM'S BUNDLE IDENTIFIER, and the reason is a real
+      # incident rather than tidiness. The very first build of this tree shipped as
+      # com.obsproject.obs-studio, ad-hoc signed, on a machine whose PRODUCTION OBS is the
+      # official build signed by Team 2MMRE5MTB8. macOS TCC keys camera / microphone /
+      # screen-recording grants on bundle identifier AND code signature, so two binaries
+      # asserting one identity with different signatures leaves TCC unable to say which one a
+      # grant belongs to. The operator's working OBS lost its camera and microphone access
+      # mid-session, came up on the permissions dialog, and its "Request Access" button could
+      # not resolve the ambiguity — on the machine that runs their live stream.
+      #
+      # A fork that borrows the parent's identity does not just risk confusing a user; it
+      # reaches into the installed app's granted permissions. Recovery needed `tccutil reset`
+      # against that identifier by hand. Keep this distinct forever, and keep it distinct
+      # BEFORE the first build, not after.
       set_target_xcode_properties(
         ${target}
-        PROPERTIES PRODUCT_BUNDLE_IDENTIFIER com.obsproject.obs-studio
+        PROPERTIES PRODUCT_BUNDLE_IDENTIFIER solutions.zoetic.qci-obs
                    PRODUCT_NAME OBS
                    ASSETCATALOG_COMPILER_APPICON_NAME AppIcon
                    CURRENT_PROJECT_VERSION ${OBS_BUILD_NUMBER}
@@ -224,7 +238,7 @@ function(set_target_properties_obs target)
       PROPERTIES DYLIB_COMPATIBILITY_VERSION 1.0
                  DYLIB_CURRENT_VERSION ${OBS_VERSION_MAJOR}
                  PRODUCT_NAME ${target}
-                 PRODUCT_BUNDLE_IDENTIFIER com.obsproject.${target}
+                 PRODUCT_BUNDLE_IDENTIFIER solutions.zoetic.qci-obs.${target}
                  SKIP_INSTALL YES
     )
 
@@ -241,7 +255,7 @@ function(set_target_properties_obs target)
                    DEVELOPMENT_TEAM ""
                    SKIP_INSTALL YES
                    PRODUCT_NAME ${target}
-                   PRODUCT_BUNDLE_IDENTIFIER com.obsproject.${target}
+                   PRODUCT_BUNDLE_IDENTIFIER solutions.zoetic.qci-obs.${target}
                    CURRENT_PROJECT_VERSION ${OBS_BUILD_NUMBER}
                    MARKETING_VERSION ${OBS_VERSION_CANONICAL}
                    GENERATE_INFOPLIST_FILE YES
@@ -258,13 +272,13 @@ function(set_target_properties_obs target)
       set_target_xcode_properties(
         ${target}
         PROPERTIES PRODUCT_NAME ${target}
-                   PRODUCT_BUNDLE_IDENTIFIER com.obsproject.${target}
+                   PRODUCT_BUNDLE_IDENTIFIER solutions.zoetic.qci-obs.${target}
       )
     elseif(target STREQUAL obslua)
       set_target_xcode_properties(
         ${target}
         PROPERTIES PRODUCT_NAME ${target}
-                   PRODUCT_BUNDLE_IDENTIFIER com.obsproject.${target}
+                   PRODUCT_BUNDLE_IDENTIFIER solutions.zoetic.qci-obs.${target}
       )
     elseif(target STREQUAL obs-dal-plugin)
       set_target_properties(${target} PROPERTIES BUILD_WITH_INSTALL_RPATH TRUE)
@@ -276,7 +290,7 @@ function(set_target_properties_obs target)
       set_target_xcode_properties(
         ${target}
         PROPERTIES PRODUCT_NAME ${target}
-                   PRODUCT_BUNDLE_IDENTIFIER com.obsproject.${target}
+                   PRODUCT_BUNDLE_IDENTIFIER solutions.zoetic.qci-obs.${target}
                    CURRENT_PROJECT_VERSION ${OBS_BUILD_NUMBER}
                    MARKETING_VERSION ${OBS_VERSION_CANONICAL}
                    GENERATE_INFOPLIST_FILE YES
