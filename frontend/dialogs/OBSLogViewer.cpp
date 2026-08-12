@@ -3,6 +3,7 @@
 #include <OBSApp.hpp>
 
 #include <qt-wrappers.hpp>
+#include <ui-config.h>
 
 #include <QDesktopServices>
 #include <QFile>
@@ -48,7 +49,7 @@ void OBSLogViewer::InitLog()
 	char logDir[512];
 	std::string path;
 
-	if (GetAppConfigPath(logDir, sizeof(logDir), "obs-studio/logs")) {
+	if (GetAppConfigPath(logDir, sizeof(logDir), OBS_USER_DATA_DIR "/logs")) {
 		path += logDir;
 		path += "/";
 		path += App()->GetCurrentLog();
@@ -115,7 +116,7 @@ void OBSLogViewer::AddLine(int type, const QString &str)
 void OBSLogViewer::on_openButton_clicked()
 {
 	char logDir[512];
-	if (GetAppConfigPath(logDir, sizeof(logDir), "obs-studio/logs") <= 0) {
+	if (GetAppConfigPath(logDir, sizeof(logDir), OBS_USER_DATA_DIR "/logs") <= 0) {
 		return;
 	}
 

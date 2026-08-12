@@ -18,6 +18,7 @@
 #include "CrashHandler.hpp"
 #include <OBSApp.hpp>
 #include <qt-wrappers.hpp>
+#include <ui-config.h>
 
 #include <nlohmann/json.hpp>
 
@@ -33,9 +34,16 @@ using CrashLogUpdateResult = OBS::CrashHandler::CrashLogUpdateResult;
 
 namespace {
 
-constexpr std::string_view crashSentinelPath = "obs-studio/.sentinel";
+constexpr std::string_view crashSentinelPath = OBS_USER_DATA_DIR "/.sentinel";
 constexpr std::string_view crashSentinelPrefix = "run_";
-constexpr std::string_view crashUploadURL = "https://obsproject.com/logs/upload";
+/* Empty on purpose. This fork was uploading ITS crash reports to the OBS project's log service —
+ * a service that cannot act on a fork's crashes, and that has no reason to receive them. A macOS
+ * .ips report is not anonymous either: it carries the full binary path, every loaded plugin and
+ * dylib, and thread names, which on this machine means the layout of a live streaming rig. The
+ * reports stay on disk in ~/Library/Logs/DiagnosticReports and the fork tells the operator where.
+ * Set this to a first-party endpoint (one that answers with a JSON {"url": ...} body, see
+ * crashLogUploadResultHandler) to re-enable uploading. */
+constexpr std::string_view crashUploadURL = "";
 
 #ifndef NDEBUG
 constexpr bool isSentinelEnabled = false;
@@ -98,7 +106,8 @@ namespace OBS {
 
 static_assert(!crashSentinelPath.empty(), "Crash sentinel path name cannot be empty");
 static_assert(!crashSentinelPrefix.empty(), "Crash sentinel filename prefix cannot be empty");
-static_assert(!crashUploadURL.empty(), "Crash sentinel upload URL cannot be empty");
+/* NOTE: crashUploadURL is deliberately allowed to be empty (see above); an empty URL means
+ * "uploading is disabled", which uploadCrashLogToServer() handles explicitly. */
 
 CrashHandler::CrashHandler(QUuid appLaunchUUID) : appLaunchUUID_(appLaunchUUID)
 {
@@ -145,10 +154,23 @@ bool CrashHandler::hasNewCrashLog()
 		return false;
 	}
 
-	bool hasNewCrashLog = (result == CrashLogUpdateResult::Updated);
-	bool hasNoLogUrl = lastCrashLogURL_.empty();
+	/* The only thing callers do with "yes, there is a new crash log" is offer to upload it
+	 * (OBSApp::checkForUncleanShutdown -> handleUncleanShutdown draws the "send report" checkbox
+	 * off this flag). With no upload endpoint that offer is a button that can only fail, so do
+	 * not raise it. updateLocalCrashLogState() above has already run, so lastCrashLogFile_ still
+	 * points at the report and uploadCrashLogToServer() can name it for the operator. */
+	/* `if constexpr` rather than `if`: crashUploadURL is a constexpr empty string_view in this
+	 * fork, so a plain `if` makes everything below provably dead and -Werror=unreachable-code
+	 * rejects the build. The `else` keeps the upload path compiled-out rather than deleted, so
+	 * re-enabling it is one string at line 46 instead of re-writing this function. */
+	if constexpr (crashUploadURL.empty()) {
+		return false;
+	} else {
+		bool hasNewCrashLog = (result == CrashLogUpdateResult::Updated);
+		bool hasNoLogUrl = lastCrashLogURL_.empty();
 
-	return (hasNewCrashLog || hasNoLogUrl);
+		return (hasNewCrashLog || hasNoLogUrl);
+	}
 }
 
 CrashLogUpdateResult CrashHandler::updateLocalCrashLogState()
@@ -191,7 +213,14 @@ void CrashHandler::checkCrashState()
 
 	if (!std::filesystem::exists(crashSentinelPath)) {
 		try {
-			std::filesystem::create_directory(crashSentinelPath);
+			/* create_directories, not create_directory: the CrashHandler is constructed in the
+			 * OBSApp constructor, which runs BEFORE AppInit()/MakeUserDirs() creates the user
+			 * config directory. Upstream never noticed because ~/Library/Application
+			 * Support/obs-studio always already existed from an earlier release. This fork's
+			 * config directory is brand new, so on a first launch the parent does not exist yet
+			 * and the non-recursive call throws — which silently disables crash detection for
+			 * exactly the run where it is most likely to be needed. */
+			std::filesystem::create_directories(crashSentinelPath);
 		} catch (const std::filesystem::filesystem_error &error) {
 			blog(LOG_ERROR,
 			     "Crash sentinel location '%s' does not exist and unable to create directory:\n%s.",
@@ -283,6 +312,31 @@ void CrashHandler::saveCrashLogToConfig()
 
 void CrashHandler::uploadCrashLogToServer()
 {
+	/* Reachable from the Help menu's manual "upload crash log" action even though the automatic
+	 * offer is suppressed, so fail loudly and usefully rather than silently.
+	 *
+	 * `if constexpr` for the same reason as hasNewCrashLog() above — crashUploadURL is a
+	 * constexpr empty view, so a plain `if` makes the whole upload body below unreachable and
+	 * -Werror=unreachable-code rejects the build. The else-branch keeps that body compiled out
+	 * rather than deleted. */
+	if constexpr (crashUploadURL.empty()) {
+		const std::string crashLogPath = lastCrashLogFile_.u8string();
+
+		blog(LOG_INFO, "Crash log upload is disabled in this build; report left on disk at '%s'",
+		     crashLogPath.empty() ? "(no report found)" : crashLogPath.c_str());
+
+		QString message =
+			crashLogPath.empty()
+				? QStringLiteral("Crash log upload is disabled in QCi-OBS, and no local "
+						 "crash report was found.")
+				: QStringLiteral("Crash log upload is disabled in QCi-OBS. The report is on "
+						 "this machine at:\n%1")
+					  .arg(QString::fromStdString(crashLogPath));
+
+		emit crashLogUploadFailed(message);
+		return;
+	}
+
 	std::string crashLogFileContent = getCrashLogFileContent(lastCrashLogFile_);
 
 	if (crashLogFileContent.empty()) {

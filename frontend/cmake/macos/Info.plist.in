@@ -8,11 +8,12 @@
 	<true/>
 	<key>LSAppNapIsDisabled</key>
 	<true/>
-	<key>SUFeedURL</key>
-	<string>${SPARKLE_APPCAST_URL}</string>
-	<key>SUPublicEDKey</key>
-	<string>${SPARKLE_PUBLIC_KEY}</string>
-	<key>SUScheduledCheckInterval</key>
-	<integer>${SPARKLE_UPDATE_INTERVAL}</integer>
+	<!-- Sparkle's SUFeedURL / SUPublicEDKey / SUScheduledCheckInterval keys used to live here,
+	     substituted from SPARKLE_APPCAST_URL and SPARKLE_PUBLIC_KEY. They pointed at the OBS
+	     project's appcast and the OBS project's signing key; because Sparkle replaces the host
+	     bundle in place, an accepted update would have overwritten QCi-OBS.app with official OBS
+	     Studio and the signature check would have PASSED. The keys are removed rather than
+	     emptied so no feed URL can ship even if the cache variables are set by accident. See
+	     frontend/cmake/feature-sparkle.cmake for the full note. -->
 </dict>
 </plist>

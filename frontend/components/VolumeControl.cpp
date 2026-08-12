@@ -21,6 +21,53 @@ bool isSourceUnassigned(obs_source_t *source)
 	return mixes == 0 && mt != OBS_MONITORING_TYPE_MONITOR_ONLY;
 }
 
+/*
+ * QCi: is this source delivering telephony-band audio into a wider mix?
+ *
+ * WHY THIS IS HERE AND NOT ONLY IN THE PLUGIN.  The operator's Bluetooth mic silently
+ * dropped to 16 kHz mono and nothing in OBS contradicted it -- obs_source_output_audio()
+ * resamples to the mix rate immediately, so every meter and every encoder downstream read
+ * 48 kHz.  They found it by ear.  The properties dialog is where you CHOOSE a device; the
+ * mixer strip is where you LIVE, so the flag has to survive the dialog closing.
+ *
+ * This deliberately uses only cross-platform libobs state -- obs_source_get_sample_rate(),
+ * which is the pre-resampler truth -- so it covers coreaudio_input_capture, sck_audio_capture
+ * and any future source for free, with no platform code in the frontend.  The macOS-only part
+ * (is it Bluetooth, is the headset also the system output) is knowledge only the plugin has,
+ * and it stays in the plugin's properties notice.
+ *
+ * 16 kHz is the ceiling of HFP wideband, not an arbitrary threshold; 22.05 and 24 kHz are
+ * legitimate choices and are NOT flagged.  The second clause keeps this quiet when OBS itself
+ * is configured at a narrow mix rate -- then nothing is being degraded relative to the mix.
+ */
+constexpr uint32_t kNarrowbandMaxHz = 16000;
+
+bool sourceFormatIsDegraded(obs_source_t *source, uint32_t &rateOut, bool &monoOut)
+{
+	if (!(obs_source_get_output_flags(source) & OBS_SOURCE_AUDIO))
+		return false;
+
+	uint32_t rate = obs_source_get_sample_rate(source);
+	if (rate == 0) /* the source has not produced audio yet -- say nothing rather than guess */
+		return false;
+
+	obs_audio_info oai = {};
+	if (!obs_get_audio_info(&oai))
+		return false;
+
+	if (rate > kNarrowbandMaxHz || rate >= oai.samples_per_sec)
+		return false;
+
+	rateOut = rate;
+
+	/* Only claim mono when libobs can actually prove it.  With downmixing disabled the
+	 * CoreAudio plugin presents a mono device as stereo with a muted second channel, so
+	 * the layout can under-report -- a false negative here, never a false positive. */
+	monoOut = obs_source_get_speaker_layout(source) == SPEAKERS_MONO;
+
+	return true;
+}
+
 void showUnassignedWarning(const char *name)
 {
 	auto msgBox = [=]() {
@@ -621,6 +668,11 @@ void VolumeControl::updateCategoryLabel()
 
 	if (mixerStatus().has(VolumeControl::MixerStatus::Unassigned)) {
 		labelText = QTStr("Basic.AudioMixer.Category.Unassigned");
+	} else if (mixerStatus().has(VolumeControl::MixerStatus::Degraded)) {
+		/* Below Unassigned on purpose: "nothing is being recorded" outranks "what is
+		 * being recorded is narrowband".  A source can be both; the worse one takes the
+		 * chip and the tooltip below carries the rest either way. */
+		labelText = degradedChip;
 	} else if (mixerStatus().has(VolumeControl::MixerStatus::Global)) {
 		labelText = QTStr("Basic.AudioMixer.Category.Global");
 	} else if (mixerStatus().has(VolumeControl::MixerStatus::Pinned)) {
@@ -641,15 +693,23 @@ void VolumeControl::updateCategoryLabel()
 	bool styleHidden = mixerStatus().has(VolumeControl::MixerStatus::Hidden);
 	bool styleUnassigned = mixerStatus().has(VolumeControl::MixerStatus::Unassigned);
 	bool stylePreviewed = mixerStatus().has(VolumeControl::MixerStatus::Preview);
+	bool styleDegraded = mixerStatus().has(VolumeControl::MixerStatus::Degraded);
 
 	utils->toggleClass("volume-pinned", stylePinned);
 	utils->toggleClass("volume-inactive", styleInactive);
 	utils->toggleClass("volume-preview", styleInactive && stylePreviewed);
 	utils->toggleClass("volume-hidden", styleHidden && !stylePinned);
 	utils->toggleClass("volume-unassigned", styleUnassigned);
+	utils->toggleClass("volume-degraded", styleDegraded && !styleUnassigned);
 
 	categoryLabel->setText(labelText);
 	categoryLabel->setAlignment(Qt::AlignCenter);
+
+	/* The tooltip carries the full sentence even when Unassigned won the chip, so the
+	 * degradation is never hidden by the more urgent problem.  Deliberately NOT a modal:
+	 * showUnassignedWarning()'s dialog has a "don't show again" box, and the entire point
+	 * here is that this stayed true and invisible for a whole session. */
+	setToolTip(degradedTooltip);
 
 	style()->polish(categoryLabel);
 	style()->polish(volumeMeter);
@@ -765,8 +825,29 @@ void VolumeControl::processMixerState()
 
 	bool isActive = obs_source_active(source) && obs_source_audio_active(source);
 
+	uint32_t degradedRate = 0;
+	bool degradedMono = false;
+	/* Only assert about a source that is actually feeding the mix.  sample_info persists
+	 * after a source stops, and reporting a stale rate as if it were current would be
+	 * exactly the kind of unearned claim this feature exists to stop making. */
+	bool degraded = isActive && sourceFormatIsDegraded(source, degradedRate, degradedMono);
+
+	if (degraded) {
+		/* 11025 must not silently become "11". A number nobody can check is worse
+		 * than no number, and checkable numbers are the entire feature. */
+		QString rate = (degradedRate % 1000 == 0) ? QString::number(degradedRate / 1000)
+							  : QString::number(degradedRate / 1000.0, 'f', 1);
+		degradedChip = degradedMono ? QTStr("Basic.AudioMixer.Category.Degraded.Mono").arg(rate)
+					    : QTStr("Basic.AudioMixer.Category.Degraded").arg(rate);
+		degradedTooltip = QTStr("Basic.AudioMixer.Degraded.Tooltip").arg(rate);
+	} else {
+		degradedChip.clear();
+		degradedTooltip.clear();
+	}
+
 	mixerStatus().set(VolumeControl::MixerStatus::Active, isActive);
 	mixerStatus().set(VolumeControl::MixerStatus::Unassigned, unassigned);
+	mixerStatus().set(VolumeControl::MixerStatus::Degraded, degraded);
 
 	QSignalBlocker blockMute(muteButton);
 	QSignalBlocker blockMonitor(monitorButton);

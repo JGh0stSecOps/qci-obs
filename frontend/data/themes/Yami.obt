@@ -1894,6 +1894,14 @@ VolumeControl.volume-unassigned .mixer-category {
     color: var(--yellow1);
 }
 
+/* Set when a source is delivering telephony-band audio into a wider mix. Red rather than
+ * yellow because, unlike Unassigned, nothing in the meters or the encoder will ever
+ * contradict it -- OBS resamples the source up and everything downstream reads the mix rate. */
+VolumeControl.volume-degraded .mixer-category {
+    background: var(--red6);
+    color: var(--red1);
+}
+
 VolumeControl.volume-inactive .mixer-category {
     background: var(--grey8);
     color: var(--text_muted);

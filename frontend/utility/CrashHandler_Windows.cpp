@@ -19,6 +19,7 @@
 #include <OBSApp.hpp>
 
 #include <util/util.hpp>
+#include <ui-config.h>
 
 #include <vector>
 
@@ -74,7 +75,7 @@ std::filesystem::path CrashHandler::findLastCrashLog() const
 
 std::filesystem::path CrashHandler::getCrashLogDirectory() const
 {
-	BPtr crashLogDirectory = GetAppConfigPathPtr("obs-studio/crashes");
+	BPtr crashLogDirectory = GetAppConfigPathPtr(OBS_USER_DATA_DIR "/crashes");
 
 	std::string crashLogDirectoryString = crashLogDirectory.Get();
 

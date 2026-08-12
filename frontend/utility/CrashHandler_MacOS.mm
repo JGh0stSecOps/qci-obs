@@ -35,6 +35,27 @@ namespace {
 
         return diagnosticsReportsURL;
     }
+
+    /* macOS names a .ips report after the crashed *process*, which is the bundle's executable file
+     * name — "QCi-OBS-2026-08-11-120000.ips" for this fork, "OBS-....ips" for stock OBS. Upstream
+     * hardcoded the @"OBS" prefix, which for this fork is wrong in both directions: it matches
+     * nothing we produce (so crash detection never fires), and it DOES match the reports of the
+     * operator's production OBS.app sitting in the same shared ~/Library/Logs/DiagnosticReports
+     * folder — so the fork would have offered to upload another application's crash. Derive the
+     * prefix from CFBundleExecutable so it tracks the OUTPUT_NAME set in cmake/macos/helpers.cmake
+     * and cannot drift from it. */
+    NSString *getCrashReportFilenamePrefix()
+    {
+        NSString *executableName = [NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleExecutable"];
+
+        if (executableName.length == 0) {
+            /* Unbundled or malformed bundle: processName is the same string macOS would use to
+             * name the report anyway. */
+            executableName = NSProcessInfo.processInfo.processName;
+        }
+
+        return executableName;
+    }
 }  // namespace
 
 namespace OBS {
@@ -70,11 +91,18 @@ namespace OBS {
 
         NSMutableArray<NSURL *> *reportCandidates = [NSMutableArray array];
 
+        NSString *reportPrefix = getCrashReportFilenamePrefix();
+
+        if (reportPrefix.length == 0) {
+            blog(LOG_ERROR, "Unable to determine executable name for crash report lookup");
+            return crashLogDirectoryPath;
+        }
+
         for (NSURL *entry in dirEnumerator) {
             NSString *fileName = nil;
             [entry getResourceValue:&fileName forKey:NSURLNameKey error:nil];
 
-            if ([fileName hasPrefix:@"OBS"] && [fileName hasSuffix:@".ips"]) {
+            if ([fileName hasPrefix:reportPrefix] && [fileName hasSuffix:@".ips"]) {
                 [reportCandidates addObject:entry];
             }
         }

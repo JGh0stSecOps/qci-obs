@@ -5657,6 +5657,14 @@ enum speaker_layout obs_source_get_speaker_layout(obs_source_t *source)
 	return source->sample_info.speakers;
 }
 
+uint32_t obs_source_get_sample_rate(obs_source_t *source)
+{
+	if (!obs_source_valid(source, "obs_source_get_sample_rate"))
+		return 0;
+
+	return source->sample_info.samples_per_sec;
+}
+
 void obs_source_set_balance_value(obs_source_t *source, float balance)
 {
 	if (obs_source_valid(source, "obs_source_set_balance_value")) {

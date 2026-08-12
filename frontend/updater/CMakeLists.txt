@@ -22,7 +22,10 @@ target_sources(
     updater.rc
 )
 
-target_compile_definitions(updater PRIVATE "PSAPI_VERSION=2")
+# The updater writes into the per-user data directory, but it is a separate executable target and
+# cannot see the frontend's generated ui-config.h. Feed it the same OBS_USER_DATA_DIR value (from
+# cmake/common/bootstrap.cmake) so a fork update never lands in a stock OBS install's %APPDATA%.
+target_compile_definitions(updater PRIVATE "PSAPI_VERSION=2" "OBS_USER_DATA_DIR_W=L\"${OBS_USER_DATA_DIR}\"")
 
 target_include_directories(updater PRIVATE "${CMAKE_SOURCE_DIR}/libobs" "${CMAKE_SOURCE_DIR}/frontend/utility")
 

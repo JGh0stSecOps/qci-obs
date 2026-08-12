@@ -4,10 +4,16 @@
 #include <utility/WhatsNewInfoThread.hpp>
 
 #include <qt-wrappers.hpp>
+#include <ui-config.h>
 
 #include "moc_MacUpdateThread.cpp"
 
-static const char *MAC_BRANCHES_URL = "https://obsproject.com/update_studio/branches.json";
+/* A fork must not query the parent project's update service. The branch list it returns describes
+ * *OBS Studio's* release channels, and every request carries the install GUID header from
+ * WhatsNewInfoThread.cpp — QCi-OBS would be counted as, and asking to be updated to, upstream OBS.
+ * Empty disables the fetch below; this whole file is also uncompiled while Sparkle is off (see
+ * frontend/cmake/feature-sparkle.cmake), so this is the second lock on the same door. */
+static const char *MAC_BRANCHES_URL = "";
 static const char *MAC_DEFAULT_BRANCH = "stable";
 
 bool GetBranch(std::string &selectedBranch)
@@ -55,7 +61,8 @@ try {
 	/* ----------------------------------- *
 	 * get branches from server            */
 
-	if (FetchAndVerifyFile("branches", "obs-studio/updates/branches.json", MAC_BRANCHES_URL, &text)) {
+	if (MAC_BRANCHES_URL[0] != '\0' &&
+	    FetchAndVerifyFile("branches", OBS_USER_DATA_DIR "/updates/branches.json", MAC_BRANCHES_URL, &text)) {
 		App()->SetBranchData(text);
 	}
 

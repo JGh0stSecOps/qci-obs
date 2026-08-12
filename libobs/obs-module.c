@@ -148,8 +148,18 @@ int obs_open_module(obs_module_t **module, const char *path, const char *data_pa
 #ifdef __APPLE__
 	/* HACK: Do not load obsolete obs-browser build on macOS; the
 	 * obs-browser plugin used to live in the Application Support
-	 * directory. */
-	if (astrstri(path, "Library/Application Support/obs-studio") != NULL && astrstri(path, "obs-browser") != NULL) {
+	 * directory.
+	 *
+	 * This match must track the frontend's user-data directory name, which this fork renamed away
+	 * from "obs-studio". Hardcoding the old literal here would have silently disabled the guard the
+	 * moment the rename landed — and a legacy obs-browser can still reach the new directory, because
+	 * populating it means hand-copying plugins out of a stock OBS install. libobs cannot include the
+	 * frontend's generated ui-config.h, so OBS_USER_DATA_DIR arrives as a compile definition from
+	 * libobs/CMakeLists.txt, fed by the same cmake/common/bootstrap.cmake variable the header is
+	 * configured from. There is deliberately no fallback definition: if the wiring is ever dropped
+	 * this fails to compile instead of quietly matching nothing. */
+	if (astrstri(path, "Library/Application Support/" OBS_USER_DATA_DIR) != NULL &&
+	    astrstri(path, "obs-browser") != NULL) {
 		blog(LOG_WARNING, "Ignoring old obs-browser.so version");
 		return MODULE_HARDCODED_SKIP;
 	}

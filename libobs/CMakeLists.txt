@@ -228,9 +228,13 @@ endif()
 
 target_compile_features(libobs PUBLIC cxx_std_17)
 
+# OBS_USER_DATA_DIR is the frontend's configured-header constant (frontend/cmake/templates/
+# ui-config.h.in), but obs-module.c's legacy obs-browser guard string-matches the same directory
+# name and libobs cannot include a frontend header. Pass the one source-of-truth CMake variable
+# (cmake/common/bootstrap.cmake) in as a define rather than letting a second literal drift.
 target_compile_definitions(
   libobs
-  PRIVATE IS_LIBOBS
+  PRIVATE IS_LIBOBS OBS_USER_DATA_DIR="${OBS_USER_DATA_DIR}"
   PUBLIC
     $<BUILD_INTERFACE:$<$<BOOL:${ENABLE_HEVC}>:ENABLE_HEVC>>
     $<BUILD_INTERFACE:$<$<BOOL:${ENABLE_FFMPEG_MUX_DEBUG}>:SHOW_SUBPROCESSES>>

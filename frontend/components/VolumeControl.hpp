@@ -29,6 +29,9 @@ public:
 			Hidden = 1 << 4,
 			Unassigned = 1 << 5,
 			Preview = 1 << 6,
+			/* The source is delivering audio at telephony bandwidth into a
+			 * wider mix.  See sourceFormatIsDegraded() in VolumeControl.cpp. */
+			Degraded = 1 << 7,
 		};
 
 		MixerStatus() = default;
@@ -87,6 +90,11 @@ private:
 
 	QString sourceName;
 	bool vertical;
+
+	/* Two words for the chip ("16 kHz"), a sentence for the tooltip.  Empty when the
+	 * source's format is not degraded. */
+	QString degradedChip;
+	QString degradedTooltip;
 
 	MixerStatus mixerStatus_;
 

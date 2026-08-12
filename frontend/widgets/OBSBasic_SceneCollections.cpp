@@ -23,6 +23,7 @@
 #include <utility/item-widget-helpers.hpp>
 
 #include <qt-wrappers.hpp>
+#include <ui-config.h>
 
 #include <QDir>
 
@@ -42,7 +43,7 @@ using SceneCollection = OBS::SceneCollection;
 
 // MARK: Constant Expressions
 
-static constexpr std::string_view SceneCollectionPath = "/obs-studio/basic/scenes/";
+static constexpr std::string_view SceneCollectionPath = "/" OBS_USER_DATA_DIR "/basic/scenes/";
 
 namespace DataKeys {
 static constexpr std::string_view AbsoluteCoordinates = "AbsoluteCoordinates";

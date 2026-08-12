@@ -1194,6 +1194,19 @@ EXPORT float obs_source_get_volume(const obs_source_t *source);
 /* Gets speaker layout of a source */
 EXPORT enum speaker_layout obs_source_get_speaker_layout(obs_source_t *source);
 
+/**
+ * Gets the sample rate a source is actually delivering, in Hz, before libobs
+ * resamples it to the mix rate.  Returns 0 if the source has produced no audio yet.
+ *
+ * This is deliberately the PRE-resampler rate.  obs_source_output_audio() stores the
+ * incoming format verbatim and then resamples to the mix rate, so every meter, every
+ * encoder and every log line downstream reports the mix rate no matter what the device
+ * handed over.  That is how a microphone can silently drop to 16 kHz and have nothing
+ * anywhere in OBS contradict it -- which is exactly what happened to this rig's operator,
+ * who found it by ear ("barely hear the music and its tinny") rather than from OBS.
+ */
+EXPORT uint32_t obs_source_get_sample_rate(obs_source_t *source);
+
 /** Sets the balance value for a stereo audio source */
 EXPORT void obs_source_set_balance_value(obs_source_t *source, float balance);
 

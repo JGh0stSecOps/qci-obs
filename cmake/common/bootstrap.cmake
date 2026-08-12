@@ -43,6 +43,14 @@ endif()
 # Set default global project variables
 set(OBS_COMPANY_NAME "OBS Project")
 set(OBS_PRODUCT_NAME "OBS Studio")
+# Name of the per-user data directory: "~/Library/Application Support/<dir>" on macOS,
+# "%APPDATA%\<dir>" on Windows, "$XDG_CONFIG_HOME/<dir>" on Linux. Upstream hardcodes the literal
+# "obs-studio" at ~40 call sites, so any fork silently reads and writes the user's stock OBS state.
+# This fork is installed alongside a production OBS that drives a live stream, and before this
+# variable existed it overwrote that installation's global.ini. OBS_PRODUCT_NAME cannot be reused
+# here: it is only a Windows version-resource string and is not path-safe. Set at bootstrap scope
+# so libobs (which string-matches the directory in its legacy obs-browser guard) sees it too.
+set(OBS_USER_DATA_DIR "qci-obs")
 set(OBS_WEBSITE "https://www.obsproject.com")
 set(OBS_COMMENTS "Free and open source software for video recording and live streaming")
 set(OBS_LEGAL_COPYRIGHT "(C) Lain Bailey")

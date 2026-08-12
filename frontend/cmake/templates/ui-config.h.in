@@ -14,3 +14,10 @@
 #define YOUTUBE_SECRET_HASH   0x@YOUTUBE_SECRET_HASH@
 
 #define DEFAULT_THEME "com.obsproject.Yami.Original"
+
+/* Per-user data directory name, configured from OBS_USER_DATA_DIR in cmake/common/bootstrap.cmake.
+ * Every profile, scene collection, log, cookie, plugin_config and global.ini path is built from
+ * this; it is the only thing keeping this build out of a production OBS install's state. */
+#define OBS_USER_DATA_DIR "@OBS_USER_DATA_DIR@"
+/* Wide-string form for the Windows updater, which builds paths with the Win32 W APIs. */
+#define OBS_USER_DATA_DIR_W L"@OBS_USER_DATA_DIR@"

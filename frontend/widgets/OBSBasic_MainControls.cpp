@@ -46,6 +46,7 @@
 #include <wizards/AutoConfig.hpp>
 
 #include <qt-wrappers.hpp>
+#include <ui-config.h>
 
 #include <nlohmann/json.hpp>
 #include <QDesktopServices>
@@ -277,8 +278,24 @@ static BPtr<char> ReadLogFile(const char *subdir, const char *log)
 	return file;
 }
 
+/* A FORK MUST NOT POST ITS LOGS TO THE PARENT PROJECT. Empty means the feature is off, exactly as
+ * crashUploadURL does in frontend/utility/CrashHandler.cpp — one shape for "this build does not
+ * phone home", so the next person looking for it finds both.
+ *
+ * This was missed when the crash uploader was disabled, because it is a SECOND, unrelated upload
+ * path: Help -> Upload Current Log File, with the URL hardcoded inline at the call site rather than
+ * read from a constant. An OBS log names your scenes, sources, capture devices, monitors and file
+ * paths, so this is a privacy leak with a menu item attached, not merely a wrong hostname. */
+constexpr std::string_view logUploadURL = "";
+
 void OBSBasic::UploadLog(const char *subdir, const char *file, const LogUploadType uploadType)
 {
+	if constexpr (logUploadURL.empty()) {
+		blog(LOG_INFO, "Log upload is disabled in this build; the log stays on this machine");
+		emit App()->logUploadFailed(uploadType, QTStr("LogUploadDialog.Errors.NoLogFile"));
+		return;
+	}
+
 	BPtr<char> fileString{ReadLogFile(subdir, file)};
 
 	if (!fileString || !*fileString) {
@@ -298,7 +315,7 @@ void OBSBasic::UploadLog(const char *subdir, const char *file, const LogUploadTy
 		logUploadThread->wait();
 	}
 
-	RemoteTextThread *thread = new RemoteTextThread("https://obsproject.com/logs/upload", "text/plain", ss.str());
+	RemoteTextThread *thread = new RemoteTextThread(std::string(logUploadURL), "text/plain", ss.str());
 
 	logUploadThread.reset(thread);
 
@@ -313,7 +330,7 @@ void OBSBasic::UploadLog(const char *subdir, const char *file, const LogUploadTy
 void OBSBasic::on_actionShowLogs_triggered()
 {
 	char logDir[512];
-	if (GetAppConfigPath(logDir, sizeof(logDir), "obs-studio/logs") <= 0) {
+	if (GetAppConfigPath(logDir, sizeof(logDir), OBS_USER_DATA_DIR "/logs") <= 0) {
 		return;
 	}
 
@@ -457,14 +474,18 @@ void OBSBasic::on_actionShowWhatsNew_triggered()
 
 void OBSBasic::on_actionReleaseNotes_triggered()
 {
-	QString addr("https://github.com/obsproject/obs-studio/releases");
+	/* Point at this fork's releases, not obsproject/obs-studio's. The old link appended
+	 * obs_get_version_string() as a tag, so it sent the operator to upstream's release page for
+	 * whatever upstream version this fork happens to be based on — release notes for software
+	 * they are not running, from a project that did not build it. */
+	QString addr("https://github.com/JGh0stSecOps/qci-obs/releases");
 	QUrl url(QString("%1/%2").arg(addr, obs_get_version_string()), QUrl::TolerantMode);
 	QDesktopServices::openUrl(url);
 }
 
 void OBSBasic::on_actionShowSettingsFolder_triggered()
 {
-	const std::string userConfigPath = App()->userConfigLocation.u8string() + "/obs-studio";
+	const std::string userConfigPath = App()->userConfigLocation.u8string() + "/" OBS_USER_DATA_DIR;
 	const QString userConfigLocation = QString::fromStdString(userConfigPath);
 
 	QDesktopServices::openUrl(QUrl::fromLocalFile(userConfigLocation));

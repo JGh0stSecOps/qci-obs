@@ -24,6 +24,7 @@
 #include <widgets/OBSBasic.hpp>
 
 #include <qt-wrappers.hpp>
+#include <ui-config.h>
 
 #include <QDirIterator>
 #include <QDropEvent>
@@ -164,7 +165,7 @@ bool GetUnusedName(std::string &name)
 	return true;
 }
 
-constexpr std::string_view OBSSceneCollectionPath = "obs-studio/basic/scenes/";
+constexpr std::string_view OBSSceneCollectionPath = OBS_USER_DATA_DIR "/basic/scenes/";
 
 void OBSImporter::importCollections()
 {

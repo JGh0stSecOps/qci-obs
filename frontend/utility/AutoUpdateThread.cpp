@@ -9,6 +9,7 @@
 #include <widgets/OBSBasic.hpp>
 
 #include <qt-wrappers.hpp>
+#include <ui-config.h>
 
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
@@ -192,7 +193,7 @@ try {
 	/* ----------------------------------- *
 	 * get branches from server            */
 
-	if (FetchAndVerifyFile("branches", "obs-studio\\updates\\branches.json", WIN_BRANCHES_URL, &text)) {
+	if (FetchAndVerifyFile("branches", OBS_USER_DATA_DIR "\\updates\\branches.json", WIN_BRANCHES_URL, &text)) {
 		App()->SetBranchData(text);
 	}
 
@@ -214,7 +215,7 @@ try {
 	 * get manifest from server            */
 
 	text.clear();
-	if (!FetchAndVerifyFile("manifest", "obs-studio\\updates\\manifest.json", manifestUrl.c_str(), &text,
+	if (!FetchAndVerifyFile("manifest", OBS_USER_DATA_DIR "\\updates\\manifest.json", manifestUrl.c_str(), &text,
 				extraHeaders)) {
 		return;
 	}
@@ -250,7 +251,7 @@ try {
 	/* ----------------------------------- *
 	 * fetch updater module                */
 
-	if (!FetchAndVerifyFile("updater", "obs-studio\\updates\\updater.exe", WIN_UPDATER_URL, nullptr)) {
+	if (!FetchAndVerifyFile("updater", OBS_USER_DATA_DIR "\\updates\\updater.exe", WIN_UPDATER_URL, nullptr)) {
 		return;
 	}
 
@@ -290,7 +291,7 @@ try {
 	/* ----------------------------------- *
 	 * execute updater                     */
 
-	BPtr<char> updateFilePath = GetAppConfigPathPtr("obs-studio\\updates\\updater.exe");
+	BPtr<char> updateFilePath = GetAppConfigPathPtr(OBS_USER_DATA_DIR "\\updates\\updater.exe");
 	BPtr<wchar_t> wUpdateFilePath;
 
 	size_t size = os_utf8_to_wcs_ptr(updateFilePath, 0, &wUpdateFilePath);

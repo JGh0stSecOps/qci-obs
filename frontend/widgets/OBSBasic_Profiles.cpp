@@ -23,13 +23,14 @@
 #include <wizards/AutoConfig.hpp>
 
 #include <qt-wrappers.hpp>
+#include <ui-config.h>
 
 #include <QDir>
 #include <QFile>
 
 // MARK: Constant Expressions
 
-constexpr std::string_view OBSProfilePath = "/obs-studio/basic/profiles/";
+constexpr std::string_view OBSProfilePath = "/" OBS_USER_DATA_DIR "/basic/profiles/";
 constexpr std::string_view OBSProfileSettingsFile = "basic.ini";
 
 // MARK: Forward Declarations

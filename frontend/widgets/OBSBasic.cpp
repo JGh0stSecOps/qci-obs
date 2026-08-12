@@ -144,13 +144,22 @@ static void AddExtraModulePaths()
 		return;
 	}
 
+	/* These build the third-party plugin search path from OBS_USER_DATA_DIR, so this build looks in
+	 * its own user-data directory and never in a stock OBS install's. That matters more here than for
+	 * config files: loading another installation's plugins means running its binaries in this
+	 * process, and those plugins then write their own settings back into this build's
+	 * plugin_config. The fork already corrupted a live rig's global.ini by sharing the directory
+	 * name; sharing the plugin tree is the same mistake with arbitrary code attached.
+	 *
+	 * Consequence: plugins are NOT inherited. Anything the rig needs must be installed under the new
+	 * directory. */
 	char base_module_dir[512];
 #if defined(_WIN32)
-	int ret = GetProgramDataPath(base_module_dir, sizeof(base_module_dir), "obs-studio/plugins/%module%");
+	int ret = GetProgramDataPath(base_module_dir, sizeof(base_module_dir), OBS_USER_DATA_DIR "/plugins/%module%");
 #elif defined(__APPLE__)
-	int ret = GetAppConfigPath(base_module_dir, sizeof(base_module_dir), "obs-studio/plugins/%module%.plugin");
+	int ret = GetAppConfigPath(base_module_dir, sizeof(base_module_dir), OBS_USER_DATA_DIR "/plugins/%module%.plugin");
 #else
-	int ret = GetAppConfigPath(base_module_dir, sizeof(base_module_dir), "obs-studio/plugins/%module%");
+	int ret = GetAppConfigPath(base_module_dir, sizeof(base_module_dir), OBS_USER_DATA_DIR "/plugins/%module%");
 #endif
 
 	if (ret <= 0) {
@@ -165,13 +174,13 @@ static void AddExtraModulePaths()
 #ifndef __aarch64__
 	/* Legacy System Library Search Path */
 	char system_legacy_module_dir[PATH_MAX];
-	GetProgramDataPath(system_legacy_module_dir, sizeof(system_legacy_module_dir), "obs-studio/plugins/%module%");
+	GetProgramDataPath(system_legacy_module_dir, sizeof(system_legacy_module_dir), OBS_USER_DATA_DIR "/plugins/%module%");
 	std::string path_system_legacy = system_legacy_module_dir;
 	obs_add_module_path((path_system_legacy + "/bin").c_str(), (path_system_legacy + "/data").c_str());
 
 	/* Legacy User Application Support Search Path */
 	char user_legacy_module_dir[PATH_MAX];
-	GetAppConfigPath(user_legacy_module_dir, sizeof(user_legacy_module_dir), "obs-studio/plugins/%module%");
+	GetAppConfigPath(user_legacy_module_dir, sizeof(user_legacy_module_dir), OBS_USER_DATA_DIR "/plugins/%module%");
 	std::string path_user_legacy = user_legacy_module_dir;
 	obs_add_module_path((path_user_legacy + "/bin").c_str(), (path_user_legacy + "/data").c_str());
 #endif

@@ -20,6 +20,7 @@
 
 #include <OBSApp.hpp>
 #include <qt-wrappers.hpp>
+#include <ui-config.h>
 #include <widgets/OBSBasic.hpp>
 
 #include <QMessageBox>
@@ -62,7 +63,7 @@ void addModuleToPluginManagerImpl(void *param, obs_module_t *newModule)
 	}
 }
 
-constexpr std::string_view OBSPluginManagerPath = "obs-studio/plugin_manager";
+constexpr std::string_view OBSPluginManagerPath = OBS_USER_DATA_DIR "/plugin_manager";
 constexpr std::string_view OBSPluginManagerModulesFile = "modules.json";
 
 void PluginManager::preLoad()

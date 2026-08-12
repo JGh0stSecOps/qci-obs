@@ -25,9 +25,14 @@ target_sources(
 configure_file(cmake/windows/obs-module.rc.in libobs-d3d11.rc)
 target_sources(libobs-d3d11 PRIVATE libobs-d3d11.rc)
 
+# The D3D11 shader cache lives under %PROGRAMDATA%\<OBS_USER_DATA_DIR>\shader-cache, and the
+# Windows updater's ClearShaderCache() deletes that exact directory. Both sides must name the same
+# one, or the fork's updater would recursively delete a stock OBS install's cache. Same
+# source-of-truth variable as everywhere else: cmake/common/bootstrap.cmake.
 target_compile_definitions(
   libobs-d3d11
   PRIVATE
+    OBS_USER_DATA_DIR="${OBS_USER_DATA_DIR}"
     $<$<BOOL:${GPU_PRIORITY_VAL}>:USE_GPU_PRIORITY>
     "$<IF:$<BOOL:${GPU_PRIORITY_VAL}>,GPU_PRIORITY_VAL=${GPU_PRIORITY_VAL},GPU_PRIORITY_VAL=0>"
 )

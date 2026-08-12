@@ -5,24 +5,33 @@
 #include <utility/crypto-helpers.hpp>
 #include <utility/platform.hpp>
 #include <utility/update-helpers.hpp>
+#include <ui-config.h>
 
 #include <QRandomGenerator>
 #include <blake2.h>
 
 #include <fstream>
+#include <string_view>
 
 #include "moc_WhatsNewInfoThread.cpp"
 
+/* Empty on purpose: QCi-OBS is a fork and has no "what's new" service of its own, so the only
+ * thing it could do here is call the OBS project's. That request is not passive — every fetch
+ * through FetchAndVerifyFile below carries an X-OBS2-GUID header, the per-install identifier
+ * upstream uses to count OBS installations. Pointing a fork at it both files false telemetry and
+ * shows this operator release notes for a product they are not running. Fill these in only if
+ * QCi-OBS gets its own endpoint, signed with its own key (CheckDataSignature verifies against
+ * OBSPublicRSAKey.pem, which is upstream's). */
 #ifndef MAC_WHATSNEW_URL
-#define MAC_WHATSNEW_URL "https://obsproject.com/update_studio/whatsnew.json"
+#define MAC_WHATSNEW_URL ""
 #endif
 
 #ifndef WIN_WHATSNEW_URL
-#define WIN_WHATSNEW_URL "https://obsproject.com/update_studio/whatsnew.json"
+#define WIN_WHATSNEW_URL ""
 #endif
 
 #ifndef LINUX_WHATSNEW_URL
-#define LINUX_WHATSNEW_URL "https://obsproject.com/update_studio/whatsnew.json"
+#define LINUX_WHATSNEW_URL ""
 #endif
 
 #ifdef __APPLE__
@@ -286,10 +295,19 @@ bool FetchAndVerifyFile(const char *name, const char *file, const char *url, std
 
 void WhatsNewInfoThread::run()
 try {
-	std::string text;
+	/* No endpoint configured (see WHATSNEW_URL above): nothing to fetch and nobody to ask.
+	 * `if constexpr` rather than a plain `if` so the URL string stays the single source of truth —
+	 * with an empty URL the fetch below is provably dead, and -Wunreachable-code is an error in
+	 * this build. */
+	if constexpr (std::string_view(WHATSNEW_URL).empty()) {
+		return;
+	} else {
+		std::string text;
 
-	if (FetchAndVerifyFile("whatsnew", "obs-studio/updates/whatsnew.json", WHATSNEW_URL, &text)) {
-		emit Result(text);
+		if (FetchAndVerifyFile("whatsnew", OBS_USER_DATA_DIR "/updates/whatsnew.json", WHATSNEW_URL,
+				       &text)) {
+			emit Result(text);
+		}
 	}
 } catch (std::string &text) {
 	blog(LOG_WARNING, "%s: %s", __FUNCTION__, text.c_str());
