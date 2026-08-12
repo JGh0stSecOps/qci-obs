@@ -30,6 +30,15 @@ set(_placeholder_location "${CMAKE_CURRENT_SOURCE_DIR}/../common/data/placeholde
 set_property(SOURCE "${_placeholder_location}" PROPERTY MACOSX_PACKAGE_LOCATION "Resources")
 source_group("Resources" FILES "${_placeholder_location}")
 
+# OBSDALStream.mm reads a user-supplied placeholder image out of the per-user config directory.
+# This is a CFPlugIn loaded into OTHER applications' processes, so it can link neither libobs nor
+# the frontend and cannot see ui-config.h — which is exactly why upstream spelled the directory
+# out by hand and this fork therefore read stock OBS's "obs-studio" folder. Pass the one
+# source-of-truth CMake variable (cmake/common/bootstrap.cmake) in as a define instead, the same
+# way libobs/CMakeLists.txt, libobs-d3d11/CMakeLists.txt and frontend/updater/CMakeLists.txt do,
+# so a second literal cannot drift from the directory the app actually writes.
+target_compile_definitions(obs-dal-plugin PRIVATE OBS_USER_DATA_DIR="${OBS_USER_DATA_DIR}")
+
 target_link_libraries(
   obs-dal-plugin
   PRIVATE
@@ -43,7 +52,7 @@ target_link_libraries(
 
 set_target_properties_obs(
   obs-dal-plugin
-  PROPERTIES OUTPUT_NAME obs-mac-virtualcam
+  PROPERTIES OUTPUT_NAME qci-mac-virtualcam
              FOLDER plugins
              PREFIX ""
              BUNDLE TRUE BUNDLE_EXTENSION plugin MACOSX_BUNDLE_INFO_PLIST
@@ -61,11 +70,11 @@ set_target_xcode_properties(
   PROPERTIES CLANG_ENABLE_OBJC_ARC YES
              CLANG_WARN_SUSPICIOUS_IMPLICIT_CONVERSION YES
              GCC_WARN_SHADOW YES
-             PRODUCT_NAME obs-mac-virtualcam
-             PRODUCT_BUNDLE_IDENTIFIER com.obsproject.obs-mac-virtualcam
+             PRODUCT_NAME qci-mac-virtualcam
+             PRODUCT_BUNDLE_IDENTIFIER solutions.zoetic.qci-studio.mac-virtualcam-dal
              CURRENT_PROJECT_VERSION ${OBS_BUILD_NUMBER}
              MARKETING_VERSION ${OBS_VERSION_CANONICAL}
              GENERATE_INFOPLIST_FILE YES
-             INFOPLIST_KEY_CFBundleDisplayName obs-mac-virtualcam
+             INFOPLIST_KEY_CFBundleDisplayName qci-mac-virtualcam
              INFOPLIST_KEY_NSHumanReadableCopyright "(c) 2020-${CURRENT_YEAR} John Boiles, Patrick Heyer, Sebastian Beckmann"
 )

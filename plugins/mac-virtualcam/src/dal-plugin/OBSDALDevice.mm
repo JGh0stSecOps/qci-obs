@@ -99,12 +99,15 @@
                               data:(nonnull void *)data
 {
     switch (address.mSelector) {
+        // The legacy DAL device's name, as every camera consumer on macOS < 13 renders it. It shares
+        // /Library/CoreMediaIO/Plug-Ins/DAL with any stock OBS installation, so it must not repeat
+        // stock OBS's name here any more than the CMIO extension may.
         case kCMIOObjectPropertyName:
-            *static_cast<CFStringRef *>(data) = CFSTR("OBS Virtual Camera");
+            *static_cast<CFStringRef *>(data) = CFSTR("QCi Studio Virtual Camera");
             *dataUsed = sizeof(CFStringRef);
             break;
         case kCMIOObjectPropertyManufacturer:
-            *static_cast<CFStringRef *>(data) = CFSTR("John Boiles");
+            *static_cast<CFStringRef *>(data) = CFSTR("Zoetic Solutions");
             *dataUsed = sizeof(CFStringRef);
             break;
         case kCMIOObjectPropertyElementCategoryName:

@@ -77,15 +77,18 @@ class OBSCameraDeviceSource: NSObject, CMIOExtensionDeviceSource {
         )
         _bufferAuxAttributes = [kCVPixelBufferPoolAllocationThresholdKey: 5]
 
+        // Derived from the device's own name (CFBundleDisplayName, see OBSCameraProviderSource.swift)
+        // rather than spelled out, so the fork's streams cannot keep announcing themselves as
+        // upstream OBS's after the device itself was renamed.
         _streamSource = OBSCameraStreamSource(
-            localizedName: "OBS Camera Extension Stream Source",
+            localizedName: "\(localizedName) Stream Source",
             streamID: sourceUUID,
             streamFormat: videoStreamFormat,
             device: device
         )
 
         _streamSink = OBSCameraStreamSink(
-            localizedName: "OBS Camera Extension Stream Sink",
+            localizedName: "\(localizedName) Stream Sink",
             streamID: sinkUUID,
             streamFormat: videoStreamFormat,
             device: device
@@ -122,7 +125,10 @@ class OBSCameraDeviceSource: NSObject, CMIOExtensionDeviceSource {
             deviceProperties.transportType = kIOAudioDeviceTransportTypeVirtual
         }
         if properties.contains(.deviceModel) {
-            deviceProperties.model = "OBS Camera Extension"
+            // system_profiler SPCameraDataType reports stock OBS's live device as
+            // "Model ID: OBS Camera Extension". This is the second field an operator can use to tell
+            // two virtual cameras apart, so it must not repeat it.
+            deviceProperties.model = "QCi Studio Camera Extension"
         }
 
         return deviceProperties

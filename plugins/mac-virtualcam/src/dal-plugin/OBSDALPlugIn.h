@@ -21,9 +21,14 @@
 #import "OBSDALMachClient.h"
 #import "OBSDALStream.h"
 
-#define kTestCardWidthKey  @"obs-mac-virtualcam-test-card-width"
-#define kTestCardHeightKey @"obs-mac-virtualcam-test-card-height"
-#define kTestCardFPSKey    @"obs-mac-virtualcam-test-card-fps"
+// These are written and read with +[NSUserDefaults standardUserDefaults] from inside this CFPlugIn,
+// which is loaded into the HOST application's process -- so they land in Zoom's, Chrome's or
+// FaceTime's defaults domain, not ours. Under upstream's names, this fork and a stock OBS
+// installation loaded into the same host would overwrite each other's test-card geometry. Namespaced
+// to the fork so the two coexist.
+#define kTestCardWidthKey  @"qci-studio-virtualcam-test-card-width"
+#define kTestCardHeightKey @"qci-studio-virtualcam-test-card-height"
+#define kTestCardFPSKey    @"qci-studio-virtualcam-test-card-fps"
 
 NS_ASSUME_NONNULL_BEGIN
 

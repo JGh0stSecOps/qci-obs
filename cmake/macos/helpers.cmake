@@ -200,6 +200,40 @@ function(set_target_properties_obs target)
         )
       else()
         target_disable_feature(mac-camera-extension "macOS CMIO Camera Extension")
+
+        # QCi fork: say out loud what this branch costs.
+        #
+        # This is not a cosmetic downgrade. Taking it means BOTH of the following, silently:
+        #   * Contents/Library/SystemExtensions/ is never created, so the .systemextension is built
+        #     and then left on the floor next to the app instead of inside it. macOS only activates
+        #     system extensions embedded in the CALLING application's bundle.
+        #   * the app is signed with entitlements.plist rather than entitlements-extension.plist
+        #     (the branch at the top of this function), so it carries neither
+        #     com.apple.developer.system-extension.install nor the app group.
+        # The result is an application that looks complete, builds green, and whose virtual camera
+        # can never start: install_cmio_system_extension() submits an activation request for an
+        # extension the OS cannot find in the caller, and virtualcam_output_start() fails with
+        # Error.SystemExtension.NotInstalled.
+        #
+        # Worth stating next to the guards in plugins/mac-virtualcam/CMakeLists.txt, which refuse to
+        # configure at all over a colliding UUID: THIS condition is the one that decides whether the
+        # feature works, and upstream degraded it without a word. It stays non-fatal — a build with
+        # no camera is a legitimate thing to want, and Apple requires a provisioning profile carrying
+        # the system-extension entitlement for Developer ID signing, which is an account-side artefact
+        # no source edit can conjure. But it must not be silent.
+        message(
+          NOTICE
+          "  ! The macOS camera extension will NOT be embedded in ${target}, and the app will NOT be "
+          "signed with the system-extension entitlement.\n"
+          "    The virtual camera cannot start from this build: it will fail with "
+          "\"the virtual camera is not installed\".\n"
+          "    Reason: CODE_SIGN_STYLE is "
+          "'${CMAKE_XCODE_ATTRIBUTE_CODE_SIGN_STYLE}' (needs 'Automatic') and OBS_PROVISIONING_PROFILE "
+          "is '${OBS_PROVISIONING_PROFILE}' (needs a profile that carries "
+          "com.apple.developer.system-extension.install for team '${OBS_CODESIGN_TEAM}').\n"
+          "    Set PROVISIONING_PROFILE in the environment before configuring, or accept that this "
+          "build has no virtual camera."
+        )
       endif()
 
       _bundle_dependencies(${target})

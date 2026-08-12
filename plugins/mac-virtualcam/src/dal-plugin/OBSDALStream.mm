@@ -46,6 +46,44 @@
 
 @end
 
+#ifndef OBS_USER_DATA_DIR
+#error "OBS_USER_DATA_DIR must be defined; see target_compile_definitions in this target's CMakeLists.txt"
+#endif
+
+/* Absolute path of the user-supplied placeholder image inside THIS fork's per-user config
+ * directory. Nothing here may be spelled out by hand: it is the same directory the running app
+ * writes to, and this plug-in is loaded into OTHER applications' processes, so it can link neither
+ * libobs nor the frontend and cannot include ui-config.h. Upstream's workaround was to type the
+ * path out, which in a fork means reading a customisation out of the STOCK OBS installation.
+ *
+ * How the app itself resolves the same directory, mirrored step for step below:
+ *   1. frontend/OBSApp.cpp:1175 passes OBS_USER_DATA_DIR "/plugin_config" to GetAppConfigPath
+ *      (frontend/OBSApp.cpp:1726), which forwards to os_get_config_path
+ *      (libobs/util/platform-cocoa.m:87) -> os_get_path_internal (same file, line 46). That
+ *      function's entire body is
+ *        NSSearchPathForDirectoriesInDomains(NSApplicationSupportDirectory, NSUserDomainMask, YES)[0]
+ *      joined with the name — so the identical call is made here rather than reassembling
+ *      "<home>/Library/Application Support" from parts.
+ *   2. libobs then appends the requesting module's own name and the file name
+ *      (obs_module_get_config_path, libobs/obs-module.c:402-414). That module is the obs-plugin
+ *      half of this same feature, whose name is PLUGIN_NAME (Defines.h, reached via Logging.h).
+ *
+ * OBS_USER_DATA_DIR itself arrives as a compile definition sourced from the single declaration in
+ * cmake/common/bootstrap.cmake, so it cannot drift from what the app uses.
+ */
+static NSString *obs_user_config_placeholder_path(void)
+{
+    NSArray<NSString *> *applicationSupportPaths =
+        NSSearchPathForDirectoriesInDomains(NSApplicationSupportDirectory, NSUserDomainMask, YES);
+
+    if (applicationSupportPaths.count == 0) {
+        return nil;
+    }
+
+    return [applicationSupportPaths[0]
+        stringByAppendingPathComponent:@OBS_USER_DATA_DIR @"/plugin_config/" PLUGIN_NAME @"/placeholder.png"];
+}
+
 @implementation OBSDALStream
 
 #define DEFAULT_FPS    30.0
@@ -110,7 +148,7 @@
 - (CFTypeRef)clock
 {
     if (_clock == NULL) {
-        OSStatus err = CMIOStreamClockCreate(kCFAllocatorDefault, CFSTR("obs-mac-virtualcam::Stream::clock"),
+        OSStatus err = CMIOStreamClockCreate(kCFAllocatorDefault, CFSTR("qci-studio-virtualcam::Stream::clock"),
                                              (__bridge void *) self, CMTimeMake(1, 10), 100, 10, &_clock);
         if (err != noErr) {
             DLog(@"Error %d from CMIOStreamClockCreate", err);
@@ -154,12 +192,8 @@
         NSString *bundlePath = [[NSBundle bundleForClass:[OBSDALStream class]] bundlePath];
         NSString *placeHolderPath = [bundlePath stringByAppendingString:@"/Contents/Resources/placeholder.png"];
         NSFileManager *fileManager = [NSFileManager defaultManager];
-        NSURL *homeUrl = [fileManager homeDirectoryForCurrentUser];
-        NSURL *customUrl =
-            [homeUrl URLByAppendingPathComponent:
-                         @"Library/Application Support/obs-studio/plugin_config/mac-virtualcam/placeholder.png"];
-        NSString *customPlaceHolder = customUrl.path;
-        if ([fileManager isReadableFileAtPath:customPlaceHolder])
+        NSString *customPlaceHolder = obs_user_config_placeholder_path();
+        if (customPlaceHolder && [fileManager isReadableFileAtPath:customPlaceHolder])
             placeHolderPath = customPlaceHolder;
         DLog(@"PlaceHolder:%@", placeHolderPath);
         NSImage *placeholderImage = [[NSImage alloc] initWithContentsOfFile:placeHolderPath];
@@ -426,11 +460,11 @@
 {
     switch (address.mSelector) {
         case kCMIOObjectPropertyName:
-            *static_cast<CFStringRef *>(data) = CFSTR("OBS Virtual Camera");
+            *static_cast<CFStringRef *>(data) = CFSTR("QCi Studio Virtual Camera");
             *dataUsed = sizeof(CFStringRef);
             break;
         case kCMIOObjectPropertyElementName:
-            *static_cast<CFStringRef *>(data) = CFSTR("OBS Virtual Camera Stream Element");
+            *static_cast<CFStringRef *>(data) = CFSTR("QCi Studio Virtual Camera Stream Element");
             *dataUsed = sizeof(CFStringRef);
             break;
         case kCMIOObjectPropertyManufacturer:

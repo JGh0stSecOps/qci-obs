@@ -2,21 +2,31 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<!-- The CFPlugIn FACTORY UUID: this bundle's own identity in the CFPlugIn registry, and the
+	     fourth identifier the fork inherited from upstream OBS. The bundle name and bundle
+	     identifier were re-minted; this was not, so both plug-ins sitting in the shared
+	     /Library/CoreMediaIO/Plug-Ins/DAL would have registered the same factory for the same type.
+	     Minted fresh with uuidgen (2026-08-12): FE07AF0C-1427-4D17-B86D-487766546F48.
+	     It appears nowhere but here -- CFPlugIn resolves the "PlugInMain" entry point through it,
+	     and OBSDALPlugInMain.mm exports that symbol by name. -->
 	<key>CFPlugInFactories</key>
 	<dict>
-		<key>7E950B8C-5E49-4B9E-B7D0-B3608A08E8F6</key>
+		<key>FE07AF0C-1427-4D17-B86D-487766546F48</key>
 		<string>PlugInMain</string>
 	</dict>
+	<!-- 30010C1C-93BF-11D8-8B5B-000A95AF9C6A is Apple's kCMIOHardwarePlugInTypeID. It is a
+	     well-known constant that every DAL plug-in must declare; it is how CoreMediaIO finds us,
+	     NOT an identity of ours, and re-minting it would make the plug-in invisible. -->
 	<key>CFPlugInTypes</key>
 	<dict>
 		<key>30010C1C-93BF-11D8-8B5B-000A95AF9C6A</key>
 		<array>
-			<string>7E950B8C-5E49-4B9E-B7D0-B3608A08E8F6</string>
+			<string>FE07AF0C-1427-4D17-B86D-487766546F48</string>
 		</array>
 	</dict>
 	<key>CMIOHardwareAssistantServiceNames</key>
 	<array>
-		<string>com.obsproject.obs-mac-virtualcam.server</string>
+		<string>solutions.zoetic.qci-studio.mac-virtualcam.server</string>
 	</array>
 </dict>
 </plist>
