@@ -2,7 +2,7 @@
 #include "AutoConfig.hpp"
 #include "ui_AutoConfigStartPage.h"
 
-#include <widgets/OBSBasic.hpp>
+#include <widgets/QCiBasic.hpp>
 
 #include "moc_AutoConfigStartPage.cpp"
 

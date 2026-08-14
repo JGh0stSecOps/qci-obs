@@ -18,7 +18,7 @@
 #include "RemuxEntryPathItemDelegate.hpp"
 #include "RemuxQueueModel.hpp"
 
-#include <OBSApp.hpp>
+#include <QCiApp.hpp>
 
 #include <qt-wrappers.hpp>
 

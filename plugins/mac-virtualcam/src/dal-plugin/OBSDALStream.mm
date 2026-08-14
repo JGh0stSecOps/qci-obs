@@ -57,8 +57,8 @@
  * path out, which in a fork means reading a customisation out of the STOCK OBS installation.
  *
  * How the app itself resolves the same directory, mirrored step for step below:
- *   1. frontend/OBSApp.cpp:1175 passes OBS_USER_DATA_DIR "/plugin_config" to GetAppConfigPath
- *      (frontend/OBSApp.cpp:1726), which forwards to os_get_config_path
+ *   1. frontend/QCiApp.cpp:1175 passes OBS_USER_DATA_DIR "/plugin_config" to GetAppConfigPath
+ *      (frontend/QCiApp.cpp:1726), which forwards to os_get_config_path
  *      (libobs/util/platform-cocoa.m:87) -> os_get_path_internal (same file, line 46). That
  *      function's entire body is
  *        NSSearchPathForDirectoriesInDomains(NSApplicationSupportDirectory, NSUserDomainMask, YES)[0]

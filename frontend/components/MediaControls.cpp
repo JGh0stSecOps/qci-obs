@@ -1,7 +1,7 @@
 #include "MediaControls.hpp"
 #include "ui_media-controls.h"
 
-#include <OBSApp.hpp>
+#include <QCiApp.hpp>
 
 #include <QToolTip>
 

@@ -1,8 +1,10 @@
 #include "AuthListener.hpp"
 
-#include <OBSApp.hpp>
+#include <QCiApp.hpp>
 
 #include <qt-wrappers.hpp>
+
+#include <ui-config.h>
 
 #include <QRegularExpression>
 #include <QTcpServer>
@@ -10,19 +12,23 @@
 
 #include "moc_AuthListener.cpp"
 
+/* ⚠️ STILL UPSTREAM BRANDING: this is the OBS logo, fetched from obsproject.com and rendered in
+ * the user's browser on the OAuth landing page. It is an image, not a string, so the rename below
+ * does not cover it. Replacing it needs a QCi-hosted asset (or an inlined data: URI) that does not
+ * exist yet; pointing it at a QCi URL that 404s would be worse than leaving it. */
 #define LOGO_URL "https://obsproject.com/assets/images/new_icon_small-r.png"
 
 static const QString serverResponseHeader = QStringLiteral("HTTP/1.0 200 OK\n"
 							   "Connection: close\n"
 							   "Content-Type: text/html; charset=UTF-8\n"
-							   "Server: OBS Studio\n"
+							   "Server: " OBS_PRODUCT_NAME "\n"
 							   "\n"
-							   "<html><head><title>OBS Studio"
+							   "<html><head><title>" OBS_PRODUCT_NAME
 							   "</title></head>");
 
 static const QString responseTemplate = "<center>"
-					"<img src=\"" LOGO_URL
-					"\" alt=\"OBS\" class=\"center\"  height=\"60\" width=\"60\">"
+					"<img src=\"" LOGO_URL "\" alt=\"" OBS_PRODUCT_NAME
+					"\" class=\"center\"  height=\"60\" width=\"60\">"
 					"</center>"
 					"<center><p style=\"font-family:verdana; font-size:13pt\">%1</p></center>";
 

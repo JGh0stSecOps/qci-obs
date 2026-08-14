@@ -55,14 +55,14 @@ target_sources(
     components/Multiview.cpp
     components/Multiview.hpp
     components/MuteCheckBox.hpp
-    components/OBSAdvAudioCtrl.cpp
-    components/OBSAdvAudioCtrl.hpp
-    components/OBSPreviewScalingComboBox.cpp
-    components/OBSPreviewScalingComboBox.hpp
-    components/OBSPreviewScalingLabel.cpp
-    components/OBSPreviewScalingLabel.hpp
-    components/OBSSourceLabel.cpp
-    components/OBSSourceLabel.hpp
+    components/QCiAdvAudioCtrl.cpp
+    components/QCiAdvAudioCtrl.hpp
+    components/QCiPreviewScalingComboBox.cpp
+    components/QCiPreviewScalingComboBox.hpp
+    components/QCiPreviewScalingLabel.cpp
+    components/QCiPreviewScalingLabel.hpp
+    components/QCiSourceLabel.cpp
+    components/QCiSourceLabel.hpp
     components/SceneTree.cpp
     components/SceneTree.hpp
     components/SilentUpdateCheckBox.hpp

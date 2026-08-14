@@ -6,7 +6,7 @@
 #include <oauth/AuthListener.hpp>
 #include <utility/YoutubeApiWrappers.hpp>
 #include <utility/obf.h>
-#include <widgets/OBSBasic.hpp>
+#include <widgets/QCiBasic.hpp>
 
 #include <qt-wrappers.hpp>
 #include <ui-config.h>

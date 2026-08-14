@@ -17,7 +17,7 @@
 
 #include "LogUploadDialog.hpp"
 
-#include <OBSApp.hpp>
+#include <QCiApp.hpp>
 
 #include <QClipboard>
 #include <QDesktopServices>

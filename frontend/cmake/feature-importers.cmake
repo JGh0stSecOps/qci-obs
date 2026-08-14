@@ -5,8 +5,8 @@ target_sources(
     importer/ImporterEntryPathItemDelegate.hpp
     importer/ImporterModel.cpp
     importer/ImporterModel.hpp
-    importer/OBSImporter.cpp
-    importer/OBSImporter.hpp
+    importer/QCiImporter.cpp
+    importer/QCiImporter.hpp
     importers/classic.cpp
     importers/importers.cpp
     importers/importers.hpp

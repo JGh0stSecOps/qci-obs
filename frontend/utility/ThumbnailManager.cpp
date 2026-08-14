@@ -19,7 +19,7 @@
 #include "ThumbnailManager.hpp"
 
 #include <utility/ThumbnailView.hpp>
-#include <widgets/OBSBasic.hpp>
+#include <widgets/QCiBasic.hpp>
 
 #include "display-helpers.hpp"
 

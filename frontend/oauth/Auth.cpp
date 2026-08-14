@@ -1,6 +1,6 @@
 #include "Auth.hpp"
 
-#include <widgets/OBSBasic.hpp>
+#include <widgets/QCiBasic.hpp>
 
 #include "moc_Auth.cpp"
 

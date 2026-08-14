@@ -34,23 +34,23 @@ target_sources(
     forms/AutoConfigVideoPage.ui
     forms/ColorSelect.ui
     forms/LogUploadDialog.ui
-    forms/OBSAbout.ui
-    forms/OBSAdvAudio.ui
-    forms/OBSBasic.ui
-    forms/OBSBasicControls.ui
-    forms/OBSBasicFilters.ui
-    forms/OBSBasicInteraction.ui
-    forms/OBSBasicProperties.ui
-    forms/OBSBasicSettings.ui
-    forms/OBSBasicSourceSelect.ui
-    forms/OBSBasicVCamConfig.ui
-    forms/OBSExtraBrowsers.ui
-    forms/OBSImporter.ui
-    forms/OBSMissingFiles.ui
-    forms/OBSRemux.ui
+    forms/QCiAbout.ui
+    forms/QCiAdvAudio.ui
+    forms/QCiBasic.ui
+    forms/QCiBasicControls.ui
+    forms/QCiBasicFilters.ui
+    forms/QCiBasicInteraction.ui
+    forms/QCiBasicProperties.ui
+    forms/QCiBasicSettings.ui
+    forms/QCiBasicSourceSelect.ui
+    forms/QCiBasicVCamConfig.ui
+    forms/QCiExtraBrowsers.ui
+    forms/QCiImporter.ui
+    forms/QCiMissingFiles.ui
+    forms/QCiRemux.ui
     forms/StatusBarWidget.ui
     forms/PluginManagerWindow.ui
-    forms/obs.qrc
+    forms/qcis.qrc
     forms/source-toolbar/browser-source-toolbar.ui
     forms/source-toolbar/color-source-toolbar.ui
     forms/source-toolbar/device-select-toolbar.ui

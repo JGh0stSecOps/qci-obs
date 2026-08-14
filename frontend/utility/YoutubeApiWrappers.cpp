@@ -2,7 +2,7 @@
 
 #include <utility/RemoteTextThread.hpp>
 #include <utility/obf.h>
-#include <widgets/OBSBasic.hpp>
+#include <widgets/QCiBasic.hpp>
 
 #include <qt-wrappers.hpp>
 #include <ui-config.h>

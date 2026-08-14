@@ -15,6 +15,16 @@
 
 #define DEFAULT_THEME "com.obsproject.Yami.Original"
 
+/* Product display name, configured from OBS_PRODUCT_NAME in cmake/common/bootstrap.cmake. This is
+ * the SINGLE source of truth for the name the user reads: window title, startup log banner,
+ * crash/log-upload dialogs, tray tooltip, --version output, OAuth landing page. Never spell the
+ * product name as a literal in C++ — include this header and use the macro, so renaming the
+ * product stays a one-line change in bootstrap.cmake. Distinct from OBS_USER_DATA_DIR below:
+ * this one is a display string and is NOT path-safe. */
+#define OBS_PRODUCT_NAME "@OBS_PRODUCT_NAME@"
+/* Wide-string form for the Windows updater, which builds UI strings with the Win32 W APIs. */
+#define OBS_PRODUCT_NAME_W L"@OBS_PRODUCT_NAME@"
+
 /* Per-user data directory name, configured from OBS_USER_DATA_DIR in cmake/common/bootstrap.cmake.
  * Every profile, scene collection, log, cookie, plugin_config and global.ini path is built from
  * this; it is the only thing keeping this build out of a production OBS install's state. */

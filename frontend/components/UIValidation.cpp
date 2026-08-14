@@ -1,6 +1,6 @@
 #include "UIValidation.hpp"
 
-#include <OBSApp.hpp>
+#include <QCiApp.hpp>
 
 #include <QMessageBox>
 #include <QPushButton>

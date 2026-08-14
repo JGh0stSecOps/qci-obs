@@ -20,7 +20,7 @@
 #include <components/MenuCheckBox.hpp>
 #include <dialogs/NameDialog.hpp>
 #include <utility/item-widget-helpers.hpp>
-#include <widgets/OBSBasic.hpp>
+#include <widgets/QCiBasic.hpp>
 
 #include <Idian/Utils.hpp>
 

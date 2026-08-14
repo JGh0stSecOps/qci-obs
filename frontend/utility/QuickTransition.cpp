@@ -17,7 +17,7 @@
 
 #include "QuickTransition.hpp"
 
-#include <OBSApp.hpp>
+#include <QCiApp.hpp>
 
 #include <qt-wrappers.hpp>
 

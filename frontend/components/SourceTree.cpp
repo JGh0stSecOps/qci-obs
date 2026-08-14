@@ -1,7 +1,7 @@
 #include "SourceTree.hpp"
 #include "SourceTreeDelegate.hpp"
 
-#include <widgets/OBSBasic.hpp>
+#include <widgets/QCiBasic.hpp>
 
 #include <QPainter>
 

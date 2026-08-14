@@ -200,7 +200,7 @@
          <string/>
         </property>
         <property name="pixmap">
-         <pixmap resource="obs.qrc">:/res/images/network-inactive.svg</pixmap>
+         <pixmap resource="qcis.qrc">:/res/images/network-inactive.svg</pixmap>
         </property>
        </widget>
       </item>
@@ -262,7 +262,7 @@
          <string/>
         </property>
         <property name="pixmap">
-         <pixmap resource="obs.qrc">:/res/images/streaming-inactive.svg</pixmap>
+         <pixmap resource="qcis.qrc">:/res/images/streaming-inactive.svg</pixmap>
         </property>
         <property name="scaledContents">
          <bool>false</bool>
@@ -330,7 +330,7 @@
          <string/>
         </property>
         <property name="pixmap">
-         <pixmap resource="obs.qrc">:/res/images/recording-inactive.svg</pixmap>
+         <pixmap resource="qcis.qrc">:/res/images/recording-inactive.svg</pixmap>
         </property>
         <property name="scaledContents">
          <bool>false</bool>
@@ -445,7 +445,7 @@
   </layout>
  </widget>
  <resources>
-  <include location="obs.qrc"/>
+  <include location="qcis.qrc"/>
  </resources>
  <connections/>
 </ui>

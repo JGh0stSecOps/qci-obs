@@ -1,6 +1,6 @@
 #include "MacUpdateThread.hpp"
 
-#include <OBSApp.hpp>
+#include <QCiApp.hpp>
 #include <utility/WhatsNewInfoThread.hpp>
 
 #include <qt-wrappers.hpp>

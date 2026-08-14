@@ -17,7 +17,7 @@
 
 #include "NativeEventFilter.hpp"
 
-#include <widgets/OBSBasic.hpp>
+#include <widgets/QCiBasic.hpp>
 
 #include <sstream>
 #define WIN32_LEAN_AND_MEAN

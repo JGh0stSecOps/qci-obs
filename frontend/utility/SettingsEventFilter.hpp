@@ -18,8 +18,8 @@
 
 #pragma once
 
-#include <OBSApp.hpp>
-#include <utility/OBSEventFilter.hpp>
+#include <QCiApp.hpp>
+#include <utility/QCiEventFilter.hpp>
 
 #include <QKeyEvent>
 #include <QObject>

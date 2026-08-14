@@ -8,13 +8,13 @@ if(
   target_sources(
     obs-studio
     PRIVATE
-      dialogs/OBSYoutubeActions.cpp
-      dialogs/OBSYoutubeActions.hpp
+      dialogs/QCiYoutubeActions.cpp
+      dialogs/QCiYoutubeActions.hpp
       docks/YouTubeAppDock.cpp
       docks/YouTubeAppDock.hpp
       docks/YouTubeChatDock.cpp
       docks/YouTubeChatDock.hpp
-      forms/OBSYoutubeActions.ui
+      forms/QCiYoutubeActions.ui
       oauth/YoutubeAuth.cpp
       oauth/YoutubeAuth.hpp
       utility/YoutubeApiWrappers.cpp

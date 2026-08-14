@@ -18,7 +18,7 @@
 
 #include "platform.hpp"
 
-#include <OBSApp.hpp>
+#include <QCiApp.hpp>
 
 #include <obs-config.h>
 #include <util/bmem.h>

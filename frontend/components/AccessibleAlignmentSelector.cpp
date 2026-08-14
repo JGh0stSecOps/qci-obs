@@ -17,7 +17,7 @@
 
 #include "AccessibleAlignmentSelector.hpp"
 
-#include <OBSApp.hpp>
+#include <QCiApp.hpp>
 
 AccessibleAlignmentSelector::AccessibleAlignmentSelector(AlignmentSelector *widget_)
 	: QAccessibleWidget(widget_, QAccessible::Grouping)

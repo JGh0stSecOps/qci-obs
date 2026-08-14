@@ -68,7 +68,7 @@ configure_file(cmake/templates/ui-config.h.in ui-config.h)
 
 target_sources(
   obs-studio
-  PRIVATE obs-main.cpp OBSStudioAPI.cpp OBSStudioAPI.hpp OBSApp.cpp OBSApp.hpp OBSApp_Themes.cpp ui-config.h
+  PRIVATE qcis-main.cpp QCiStudioAPI.cpp QCiStudioAPI.hpp QCiApp.cpp QCiApp.hpp QCiApp_Themes.cpp ui-config.h
 )
 
 if(OS_WINDOWS)

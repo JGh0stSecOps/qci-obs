@@ -1,7 +1,7 @@
 #include "GoLiveAPI_Network.hpp"
 #include "GoLiveAPI_CensoredJson.hpp"
 
-#include <OBSApp.hpp>
+#include <QCiApp.hpp>
 #include <utility/MultitrackVideoError.hpp>
 #include <utility/RemoteTextThread.hpp>
 

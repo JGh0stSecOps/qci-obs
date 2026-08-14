@@ -17,7 +17,7 @@
 
 #include "MissingFilesModel.hpp"
 
-#include <widgets/OBSBasic.hpp>
+#include <widgets/QCiBasic.hpp>
 
 #include <QFileInfo>
 #include <QMessageBox>

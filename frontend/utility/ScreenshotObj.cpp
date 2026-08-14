@@ -19,7 +19,7 @@
 #include "ScreenshotObj.hpp"
 #include "display-helpers.hpp"
 
-#include <widgets/OBSBasic.hpp>
+#include <widgets/QCiBasic.hpp>
 
 #include <qt-wrappers.hpp>
 

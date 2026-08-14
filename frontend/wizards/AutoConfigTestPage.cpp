@@ -3,7 +3,7 @@
 #include "TestMode.hpp"
 #include "ui_AutoConfigTestPage.h"
 
-#include <widgets/OBSBasic.hpp>
+#include <widgets/QCiBasic.hpp>
 
 #include <graphics/math-extra.h>
 #include <qt-wrappers.hpp>

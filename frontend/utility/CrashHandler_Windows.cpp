@@ -16,7 +16,7 @@
  ******************************************************************************/
 
 #include "CrashHandler.hpp"
-#include <OBSApp.hpp>
+#include <QCiApp.hpp>
 
 #include <util/util.hpp>
 #include <ui-config.h>

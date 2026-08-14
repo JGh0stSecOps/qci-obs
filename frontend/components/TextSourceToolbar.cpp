@@ -1,7 +1,7 @@
 #include "TextSourceToolbar.hpp"
 #include "ui_text-source-toolbar.h"
 
-#include <OBSApp.hpp>
+#include <QCiApp.hpp>
 
 #include <qt-wrappers.hpp>
 

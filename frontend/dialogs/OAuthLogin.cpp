@@ -1,6 +1,6 @@
 #include "OAuthLogin.hpp"
 
-#include <widgets/OBSBasic.hpp>
+#include <widgets/QCiBasic.hpp>
 
 #ifdef BROWSER_AVAILABLE
 #include <browser-panel.hpp>

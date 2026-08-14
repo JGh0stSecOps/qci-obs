@@ -19,28 +19,28 @@ target_sources(
     dialogs/NameDialog.hpp
     dialogs/OAuthLogin.cpp
     dialogs/OAuthLogin.hpp
-    dialogs/OBSAbout.cpp
-    dialogs/OBSAbout.hpp
-    dialogs/OBSBasicAdvAudio.cpp
-    dialogs/OBSBasicAdvAudio.hpp
-    dialogs/OBSBasicFilters.cpp
-    dialogs/OBSBasicFilters.hpp
-    dialogs/OBSBasicInteraction.cpp
-    dialogs/OBSBasicInteraction.hpp
-    dialogs/OBSBasicProperties.cpp
-    dialogs/OBSBasicProperties.hpp
-    dialogs/OBSBasicSourceSelect.cpp
-    dialogs/OBSBasicSourceSelect.hpp
-    dialogs/OBSBasicTransform.cpp
-    dialogs/OBSBasicTransform.hpp
-    dialogs/OBSBasicVCamConfig.cpp
-    dialogs/OBSBasicVCamConfig.hpp
-    dialogs/OBSLogViewer.cpp
-    dialogs/OBSLogViewer.hpp
-    dialogs/OBSMissingFiles.cpp
-    dialogs/OBSMissingFiles.hpp
-    dialogs/OBSRemux.cpp
-    dialogs/OBSRemux.hpp
-    dialogs/OBSWhatsNew.cpp
-    dialogs/OBSWhatsNew.hpp
+    dialogs/QCiAbout.cpp
+    dialogs/QCiAbout.hpp
+    dialogs/QCiBasicAdvAudio.cpp
+    dialogs/QCiBasicAdvAudio.hpp
+    dialogs/QCiBasicFilters.cpp
+    dialogs/QCiBasicFilters.hpp
+    dialogs/QCiBasicInteraction.cpp
+    dialogs/QCiBasicInteraction.hpp
+    dialogs/QCiBasicProperties.cpp
+    dialogs/QCiBasicProperties.hpp
+    dialogs/QCiBasicSourceSelect.cpp
+    dialogs/QCiBasicSourceSelect.hpp
+    dialogs/QCiBasicTransform.cpp
+    dialogs/QCiBasicTransform.hpp
+    dialogs/QCiBasicVCamConfig.cpp
+    dialogs/QCiBasicVCamConfig.hpp
+    dialogs/QCiLogViewer.cpp
+    dialogs/QCiLogViewer.hpp
+    dialogs/QCiMissingFiles.cpp
+    dialogs/QCiMissingFiles.hpp
+    dialogs/QCiRemux.cpp
+    dialogs/QCiRemux.hpp
+    dialogs/QCiWhatsNew.cpp
+    dialogs/QCiWhatsNew.hpp
 )

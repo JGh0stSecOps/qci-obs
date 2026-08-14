@@ -1,6 +1,6 @@
 #pragma once
 
-#include "OBSDock.hpp"
+#include "QCiDock.hpp"
 
 #include <browser-panel.hpp>
 

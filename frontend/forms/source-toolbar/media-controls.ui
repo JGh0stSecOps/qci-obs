@@ -62,7 +62,7 @@
       <string/>
      </property>
      <property name="icon">
-      <iconset resource="../obs.qrc">
+      <iconset resource="../qcis.qrc">
        <normaloff>:/res/images/media/media_restart.svg</normaloff>:/res/images/media/media_restart.svg</iconset>
      </property>
      <property name="iconSize">
@@ -100,7 +100,7 @@
       <string/>
      </property>
      <property name="icon">
-      <iconset resource="../obs.qrc">
+      <iconset resource="../qcis.qrc">
        <normaloff>:/res/images/media/media_previous.svg</normaloff>:/res/images/media/media_previous.svg</iconset>
      </property>
      <property name="iconSize">
@@ -141,7 +141,7 @@
       <string/>
      </property>
      <property name="icon">
-      <iconset resource="../obs.qrc">
+      <iconset resource="../qcis.qrc">
        <normaloff>:/res/images/media/media_stop.svg</normaloff>:/res/images/media/media_stop.svg</iconset>
      </property>
      <property name="iconSize">
@@ -182,7 +182,7 @@
       <string/>
      </property>
      <property name="icon">
-      <iconset resource="../obs.qrc">
+      <iconset resource="../qcis.qrc">
        <normaloff>:/res/images/media/media_next.svg</normaloff>:/res/images/media/media_next.svg</iconset>
      </property>
      <property name="iconSize">
@@ -306,7 +306,7 @@
   </customwidget>
  </customwidgets>
  <resources>
-  <include location="../obs.qrc"/>
+  <include location="../qcis.qrc"/>
  </resources>
  <connections/>
 </ui>

@@ -17,7 +17,7 @@
 
 #include "ImporterModel.hpp"
 
-#include <OBSApp.hpp>
+#include <QCiApp.hpp>
 #include <importers/importers.hpp>
 
 #include "moc_ImporterModel.cpp"

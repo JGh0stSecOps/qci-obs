@@ -28,15 +28,15 @@ target_sources(
     utility/MultitrackVideoOutput.cpp
     utility/MultitrackVideoOutput.hpp
     utility/NativeEventFilter.hpp
-    utility/OBSCanvas.cpp
-    utility/OBSCanvas.hpp
-    utility/OBSEventFilter.hpp
-    utility/OBSProxyStyle.cpp
-    utility/OBSProxyStyle.hpp
-    utility/OBSTheme.hpp
-    utility/OBSThemeVariable.hpp
-    utility/OBSTranslator.cpp
-    utility/OBSTranslator.hpp
+    utility/QCiCanvas.cpp
+    utility/QCiCanvas.hpp
+    utility/QCiEventFilter.hpp
+    utility/QCiProxyStyle.cpp
+    utility/QCiProxyStyle.hpp
+    utility/QCiTheme.hpp
+    utility/QCiThemeVariable.hpp
+    utility/QCiTranslator.cpp
+    utility/QCiTranslator.hpp
     utility/PreviewProgramSizeObserver.cpp
     utility/PreviewProgramSizeObserver.hpp
     utility/QuickTransition.cpp

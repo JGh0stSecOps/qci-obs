@@ -1,6 +1,6 @@
 #include "VisibilityItemWidget.hpp"
 
-#include <components/OBSSourceLabel.hpp>
+#include <components/QCiSourceLabel.hpp>
 
 #include <QCheckBox>
 #include <QHBoxLayout>

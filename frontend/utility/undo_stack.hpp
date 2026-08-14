@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ui_OBSBasic.h"
+#include "ui_QCiBasic.h"
 
 #include <QObject>
 #include <QString>

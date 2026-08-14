@@ -1,12 +1,12 @@
 #include "AutoUpdateThread.hpp"
-#include "ui_OBSUpdate.h"
+#include "ui_QCiUpdate.h"
 
-#include <OBSApp.hpp>
-#include <dialogs/OBSUpdate.hpp>
+#include <QCiApp.hpp>
+#include <dialogs/QCiUpdate.hpp>
 #include <updater/manifest.hpp>
 #include <utility/WhatsNewInfoThread.hpp>
 #include <utility/update-helpers.hpp>
-#include <widgets/OBSBasic.hpp>
+#include <widgets/QCiBasic.hpp>
 
 #include <qt-wrappers.hpp>
 #include <ui-config.h>

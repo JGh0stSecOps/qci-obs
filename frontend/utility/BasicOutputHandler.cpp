@@ -5,7 +5,7 @@
 #include <utility/MultitrackVideoError.hpp>
 #include <utility/StartMultiTrackVideoStreamingGuard.hpp>
 #include <utility/VCamConfig.hpp>
-#include <widgets/OBSBasic.hpp>
+#include <widgets/QCiBasic.hpp>
 
 #include <qt-wrappers.hpp>
 

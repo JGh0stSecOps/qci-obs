@@ -3,9 +3,9 @@ include(cmake/feature-sparkle.cmake)
 target_sources(
   obs-studio
   PRIVATE
-    dialogs/OBSPermissions.cpp
-    dialogs/OBSPermissions.hpp
-    forms/OBSPermissions.ui
+    dialogs/QCiPermissions.cpp
+    dialogs/QCiPermissions.hpp
+    forms/QCiPermissions.ui
     utility/CrashHandler_MacOS.mm
     utility/NativeEventFilter.cpp
     utility/platform-osx.mm

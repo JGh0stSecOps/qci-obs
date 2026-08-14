@@ -10,7 +10,7 @@
  * QCi -- the rig's own design language, worn by OBS.
  *
  * WHY THIS FILE EXTENDS YAMI RATHER THAN STANDING ALONE.
- * OBSApp_Themes.cpp permits a base theme (.obt) to name another base theme as its parent
+ * QCiApp_Themes.cpp permits a base theme (.obt) to name another base theme as its parent
  * (FindThemes() only rejects a base whose ancestor is NOT a base). Extending Yami means this
  * file inherits ~2700 lines of widget rules that already cover every dialog OBS ships, so
  * nothing falls back to a foreign colour, and it stays a single ADDITIVE file with zero

@@ -2,7 +2,7 @@
 
 #include <components/DelButton.hpp>
 #include <docks/BrowserDock.hpp>
-#include <widgets/OBSBasic.hpp>
+#include <widgets/QCiBasic.hpp>
 
 #include <qt-wrappers.hpp>
 

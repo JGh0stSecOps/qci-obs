@@ -2,7 +2,7 @@
 #include "AutoConfig.hpp"
 #include "ui_AutoConfigVideoPage.h"
 
-#include <OBSApp.hpp>
+#include <QCiApp.hpp>
 
 #include <QScreen>
 

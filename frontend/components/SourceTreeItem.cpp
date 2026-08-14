@@ -1,7 +1,7 @@
 #include "SourceTreeItem.hpp"
 
-#include <components/OBSSourceLabel.hpp>
-#include <widgets/OBSBasic.hpp>
+#include <components/QCiSourceLabel.hpp>
+#include <widgets/QCiBasic.hpp>
 
 #include <qt-wrappers.hpp>
 

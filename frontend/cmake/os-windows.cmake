@@ -12,16 +12,16 @@ set(CMAKE_FIND_PACKAGE_PREFER_CONFIG FALSE)
 find_package(Detours REQUIRED)
 find_package(nlohmann_json 3.11 REQUIRED)
 
-configure_file(cmake/windows/obs.rc.in obs.rc)
+configure_file(cmake/windows/qcis.rc.in qcis.rc)
 
 target_sources(
   obs-studio
   PRIVATE
-    cmake/windows/obs.manifest
-    dialogs/OBSUpdate.cpp
-    dialogs/OBSUpdate.hpp
-    forms/OBSUpdate.ui
-    obs.rc
+    cmake/windows/qcis.manifest
+    dialogs/QCiUpdate.cpp
+    dialogs/QCiUpdate.hpp
+    forms/QCiUpdate.ui
+    qcis.rc
     utility/AutoUpdateThread.cpp
     utility/AutoUpdateThread.hpp
     utility/CrashHandler_Windows.cpp

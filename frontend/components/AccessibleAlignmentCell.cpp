@@ -17,7 +17,7 @@
 
 #include "AccessibleAlignmentCell.hpp"
 
-#include <OBSApp.hpp>
+#include <QCiApp.hpp>
 
 using namespace std::string_view_literals;
 constexpr std::array indexToStrings = {

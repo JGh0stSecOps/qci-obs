@@ -1,6 +1,6 @@
 #include "SourceToolbar.hpp"
 
-#include <widgets/OBSBasic.hpp>
+#include <widgets/QCiBasic.hpp>
 
 #include "moc_SourceToolbar.cpp"
 

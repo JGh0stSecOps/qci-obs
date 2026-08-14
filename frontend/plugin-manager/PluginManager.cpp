@@ -18,10 +18,10 @@
 #include "PluginManager.hpp"
 #include "PluginManagerWindow.hpp"
 
-#include <OBSApp.hpp>
+#include <QCiApp.hpp>
 #include <qt-wrappers.hpp>
 #include <ui-config.h>
-#include <widgets/OBSBasic.hpp>
+#include <widgets/QCiBasic.hpp>
 
 #include <QMessageBox>
 

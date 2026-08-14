@@ -1,7 +1,7 @@
 #include "OAuth.hpp"
 
 #include <utility/RemoteTextThread.hpp>
-#include <widgets/OBSBasic.hpp>
+#include <widgets/QCiBasic.hpp>
 
 #include <qt-wrappers.hpp>
 

@@ -78,11 +78,17 @@ function(set_target_properties_obs target)
                    CLANG_ENABLE_OBJC_ARC YES
                    SKIP_INSTALL NO
                    INSTALL_PATH "$(LOCAL_APPS_DIR)"
-                   INFOPLIST_KEY_CFBundleDisplayName "QCi Studio"
+                   # These four are the product name as the user reads it. They come from
+                   # OBS_PRODUCT_NAME in cmake/common/bootstrap.cmake — the single definition of
+                   # the name — not from a literal repeated here. The three usage descriptions are
+                   # the text macOS puts inside the TCC permission prompts, which are the very
+                   # first strings this app ever shows: get them wrong and the operator is asked
+                   # whether to grant camera access to a product they are not running.
+                   INFOPLIST_KEY_CFBundleDisplayName "${OBS_PRODUCT_NAME}"
                    INFOPLIST_KEY_NSHumanReadableCopyright "(c) 2012-${CURRENT_YEAR} Lain Bailey"
-                   INFOPLIST_KEY_NSCameraUsageDescription "OBS needs to access the camera to enable camera sources to work."
-                   INFOPLIST_KEY_NSMicrophoneUsageDescription "OBS needs to access the microphone to enable audio input."
-                   INFOPLIST_KEY_NSAppleEventsUsageDescription "OBS needs to access background events to enable hotkeys while not in focus."
+                   INFOPLIST_KEY_NSCameraUsageDescription "${OBS_PRODUCT_NAME} needs to access the camera to enable camera sources to work."
+                   INFOPLIST_KEY_NSMicrophoneUsageDescription "${OBS_PRODUCT_NAME} needs to access the microphone to enable audio input."
+                   INFOPLIST_KEY_NSAppleEventsUsageDescription "${OBS_PRODUCT_NAME} needs to access background events to enable hotkeys while not in focus."
       )
 
       get_property(obs_dependencies GLOBAL PROPERTY _OBS_DEPENDENCIES)

@@ -17,7 +17,7 @@
 
 #include "RemoteTextThread.hpp"
 
-#include <OBSApp.hpp>
+#include <QCiApp.hpp>
 
 #include <qt-wrappers.hpp>
 #include <util/curl/curl-helper.h>

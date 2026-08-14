@@ -1,6 +1,6 @@
 #include "undo_stack.hpp"
 
-#include <OBSApp.hpp>
+#include <QCiApp.hpp>
 
 #include "moc_undo_stack.cpp"
 

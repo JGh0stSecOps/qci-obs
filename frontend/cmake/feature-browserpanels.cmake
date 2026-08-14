@@ -6,8 +6,8 @@ if(TARGET OBS::browser-panels)
   target_sources(
     obs-studio
     PRIVATE
-      dialogs/OBSExtraBrowsers.cpp
-      dialogs/OBSExtraBrowsers.hpp
+      dialogs/QCiExtraBrowsers.cpp
+      dialogs/QCiExtraBrowsers.hpp
       docks/BrowserDock.cpp
       docks/BrowserDock.hpp
       utility/ExtraBrowsersDelegate.cpp

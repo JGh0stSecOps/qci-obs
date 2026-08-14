@@ -1,6 +1,6 @@
 #include "VolumeMeter.hpp"
 
-#include <OBSApp.hpp>
+#include <QCiApp.hpp>
 #include <QEvent>
 #include <QMouseEvent>
 #include <QPainter>

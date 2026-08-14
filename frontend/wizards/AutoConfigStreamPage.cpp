@@ -9,9 +9,11 @@
 #ifdef YOUTUBE_ENABLED
 #include <utility/YoutubeApiWrappers.hpp>
 #endif
-#include <widgets/OBSBasic.hpp>
+#include <widgets/QCiBasic.hpp>
 
 #include <qt-wrappers.hpp>
+
+#include <ui-config.h>
 
 #include "moc_AutoConfigStreamPage.cpp"
 
@@ -299,7 +301,7 @@ void AutoConfigStreamPage::OnOAuthStreamKeyConnected()
 
 				/* Create throwaway stream key for bandwidth test */
 				if (ui->doBandwidthTest->isChecked()) {
-					StreamDescription stream = {"", "", "OBS Studio Test Stream"};
+					StreamDescription stream = {"", "", OBS_PRODUCT_NAME " Test Stream"};
 					if (ytAuth->InsertStream(stream)) {
 						ui->key->setText(stream.name);
 					}

@@ -16,7 +16,7 @@
 ******************************************************************************/
 
 #include "CrashHandler.hpp"
-#include <OBSApp.hpp>
+#include <QCiApp.hpp>
 #include <qt-wrappers.hpp>
 #include <ui-config.h>
 
@@ -88,7 +88,7 @@ std::pair<OBS::TimePoint, std::string> buildCrashLogUploadContent(OBS::PlatformT
 
 	switch (platformType) {
 	case OBS::PlatformType::Windows:
-		uploadLogMessage << "OBS " << App()->GetVersionString(false) << " crash file uploaded at "
+		uploadLogMessage << OBS_PRODUCT_NAME " " << App()->GetVersionString(false) << " crash file uploaded at "
 				 << std::put_time(&uploadTimeLocal, "%Y-%m-%d, %X") << "\n\n"
 				 << crashLogFileContent;
 		break;

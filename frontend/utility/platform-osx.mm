@@ -17,7 +17,7 @@
 
 #import "platform.hpp"
 
-#import <OBSApp.hpp>
+#import <QCiApp.hpp>
 
 #import <util/threading.h>
 

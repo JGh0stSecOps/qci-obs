@@ -1,6 +1,6 @@
 #include "WhatsNewInfoThread.hpp"
 
-#include <OBSApp.hpp>
+#include <QCiApp.hpp>
 #include <utility/RemoteTextThread.hpp>
 #include <utility/crypto-helpers.hpp>
 #include <utility/platform.hpp>
@@ -172,11 +172,13 @@ static void LoadPublicKey(std::string &pubkey)
 {
 	std::string pemFilePath;
 
+	/* The filename is upstream's signing key and stays as-is (it verifies the What's New feed
+	 * served from obsproject.com); only the wording the user sees is de-branded. */
 	if (!GetDataFilePath("OBSPublicRSAKey.pem", pemFilePath)) {
-		throw std::string("Could not find OBS public key file!");
+		throw std::string("Could not find the What's New public key file!");
 	}
 	if (!QuickReadFile(pemFilePath.c_str(), pubkey)) {
-		throw std::string("Could not read OBS public key file!");
+		throw std::string("Could not read the What's New public key file!");
 	}
 }
 

@@ -18,7 +18,7 @@
 #include "ImporterEntryPathItemDelegate.hpp"
 #include "ImporterModel.hpp"
 
-#include <OBSApp.hpp>
+#include <QCiApp.hpp>
 
 #include <qt-wrappers.hpp>
 

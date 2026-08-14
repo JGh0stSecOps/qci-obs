@@ -1,8 +1,8 @@
 #include "audio-encoders.hpp"
 
-#include <OBSApp.hpp>
+#include <QCiApp.hpp>
 #include <obs.hpp>
-#include <widgets/OBSMainWindow.hpp>
+#include <widgets/QCiMainWindow.hpp>
 
 #include <mutex>
 #include <sstream>

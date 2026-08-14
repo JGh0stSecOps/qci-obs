@@ -50,7 +50,7 @@
       <string>RefreshBrowser</string>
      </property>
      <property name="icon">
-      <iconset resource="../obs.qrc">
+      <iconset resource="../qcis.qrc">
        <normaloff>:/res/images/refresh.svg</normaloff>:/res/images/refresh.svg</iconset>
      </property>
      <property name="flat">
@@ -84,7 +84,7 @@
   </layout>
  </widget>
  <resources>
-  <include location="../obs.qrc"/>
+  <include location="../qcis.qrc"/>
  </resources>
  <connections/>
 </ui>

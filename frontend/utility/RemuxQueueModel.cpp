@@ -17,7 +17,7 @@
 
 #include "RemuxQueueModel.hpp"
 
-#include <OBSApp.hpp>
+#include <QCiApp.hpp>
 
 #include <QDir>
 #include <QStyle>

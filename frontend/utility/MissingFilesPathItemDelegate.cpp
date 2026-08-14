@@ -17,7 +17,7 @@
 
 #include "MissingFilesPathItemDelegate.hpp"
 
-#include <OBSApp.hpp>
+#include <QCiApp.hpp>
 
 #include <QFileDialog>
 #include <QHBoxLayout>

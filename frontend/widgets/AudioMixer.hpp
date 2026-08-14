@@ -17,7 +17,7 @@
 
 #pragma once
 
-#include "OBSBasic.hpp"
+#include "QCiBasic.hpp"
 
 #include <components/MenuCheckBox.hpp>
 #include <components/VolumeControl.hpp>

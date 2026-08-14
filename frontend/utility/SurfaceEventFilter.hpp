@@ -1,6 +1,6 @@
 #pragma once
 
-#include <widgets/OBSQTDisplay.hpp>
+#include <widgets/QCiQTDisplay.hpp>
 
 #include <QObject>
 #include <QPlatformSurfaceEvent>

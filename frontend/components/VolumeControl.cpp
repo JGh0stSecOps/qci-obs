@@ -5,7 +5,7 @@
 #include <components/VolumeName.hpp>
 #include <components/VolumeSlider.hpp>
 #include <dialogs/NameDialog.hpp>
-#include <widgets/OBSBasic.hpp>
+#include <widgets/QCiBasic.hpp>
 
 #include <QMessageBox>
 #include <QObjectCleanupHandler>

@@ -257,7 +257,7 @@
   </layout>
  </widget>
  <resources>
-  <include location="obs.qrc"/>
+  <include location="qcis.qrc"/>
  </resources>
  <connections/>
 </ui>

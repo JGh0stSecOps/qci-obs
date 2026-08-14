@@ -1,7 +1,7 @@
 #include "Multiview.hpp"
 
 #include <utility/display-helpers.hpp>
-#include <widgets/OBSBasic.hpp>
+#include <widgets/QCiBasic.hpp>
 
 #include <obs-frontend-api.h>
 

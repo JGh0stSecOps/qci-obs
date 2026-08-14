@@ -1,7 +1,7 @@
 #include "YouTubeAppDock.hpp"
 
 #include <utility/YoutubeApiWrappers.hpp>
-#include <widgets/OBSBasic.hpp>
+#include <widgets/QCiBasic.hpp>
 
 #include <qt-wrappers.hpp>
 

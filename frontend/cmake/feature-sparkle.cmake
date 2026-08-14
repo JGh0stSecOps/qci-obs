@@ -20,12 +20,12 @@ if(SPARKLE_APPCAST_URL AND SPARKLE_PUBLIC_KEY)
     PRIVATE
       utility/MacUpdateThread.cpp
       utility/MacUpdateThread.hpp
-      utility/OBSSparkle.hpp
-      utility/OBSSparkle.mm
-      utility/OBSUpdateDelegate.h
-      utility/OBSUpdateDelegate.mm
+      utility/QCiSparkle.hpp
+      utility/QCiSparkle.mm
+      utility/QCiUpdateDelegate.h
+      utility/QCiUpdateDelegate.mm
   )
-  set_source_files_properties(utility/OBSSparkle.mm PROPERTIES COMPILE_OPTIONS -fobjc-arc)
+  set_source_files_properties(utility/QCiSparkle.mm PROPERTIES COMPILE_OPTIONS -fobjc-arc)
 
   target_link_libraries(obs-studio PRIVATE "$<LINK_LIBRARY:FRAMEWORK,${SPARKLE}>")
 

@@ -17,7 +17,7 @@
 
 #include "platform.hpp"
 
-#include <OBSApp.hpp>
+#include <QCiApp.hpp>
 
 #include <util/windows/ComPtr.hpp>
 #include <util/windows/WinHandle.hpp>

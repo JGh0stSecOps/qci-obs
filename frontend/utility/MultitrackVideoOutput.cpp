@@ -4,7 +4,7 @@
 #include "GoLiveAPI_Network.hpp"
 #include "GoLiveAPI_PostData.hpp"
 
-#include <OBSApp.hpp>
+#include <QCiApp.hpp>
 
 #include <bpm.h>
 #include <util/dstr.hpp>

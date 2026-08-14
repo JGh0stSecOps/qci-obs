@@ -1,7 +1,7 @@
 #include "ComboSelectToolbar.hpp"
 #include "ui_device-select-toolbar.h"
 
-#include <OBSApp.hpp>
+#include <QCiApp.hpp>
 #include <qt-wrappers.hpp>
 
 #include "moc_ComboSelectToolbar.cpp"
