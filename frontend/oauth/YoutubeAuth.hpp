@@ -7,7 +7,6 @@ inline const std::vector<Auth::Def> youtubeServices = {{"YouTube - RTMP", Auth::
 						       {"YouTube - HLS", Auth::Type::OAuth_LinkedAccount, true, true}};
 
 #ifdef BROWSER_AVAILABLE
-class YoutubeChatDock;
 #endif
 
 class YoutubeAuth : public OAuthStreamKey {
@@ -17,7 +16,6 @@ class YoutubeAuth : public OAuthStreamKey {
 	std::string section;
 
 #ifdef BROWSER_AVAILABLE
-	YoutubeChatDock *chat = nullptr;
 #endif
 
 	virtual bool RetryLogin() override;

@@ -1,7 +1,6 @@
 #include "QCiBasicSettings.hpp"
 
 #ifdef YOUTUBE_ENABLED
-#include <docks/YouTubeAppDock.hpp>
 #endif
 #include <oauth/OAuth.hpp>
 #ifdef YOUTUBE_ENABLED
@@ -53,8 +52,10 @@ void OBSBasicSettings::InitStreamPage()
 	ui->disconnectAccount->setVisible(false);
 	ui->bandwidthTestEnable->setVisible(false);
 
-	ui->twitchAddonDropdown->setVisible(false);
-	ui->twitchAddonLabel->setVisible(false);
+	/* QCi: the twitchAddonDropdown/twitchAddonLabel pair (BTTV / FrankerFaceZ chat addons)
+	 * used to be built here and then hidden unless the connected account was Twitch. It was
+	 * compiled unconditionally but could only ever appear behind a Twitch OAuth login, which
+	 * this fork does not build. Widgets removed from forms/QCiBasicSettings.ui as well. */
 
 	ui->connectedAccountLabel->setVisible(false);
 	ui->connectedAccountText->setVisible(false);
@@ -74,11 +75,6 @@ void OBSBasicSettings::InitStreamPage()
 	ui->streamkeyPageLayout->setContentsMargins(m);
 
 	LoadServices(false);
-
-	ui->twitchAddonDropdown->addItem(QTStr("Basic.Settings.Stream.TTVAddon.None"));
-	ui->twitchAddonDropdown->addItem(QTStr("Basic.Settings.Stream.TTVAddon.BTTV"));
-	ui->twitchAddonDropdown->addItem(QTStr("Basic.Settings.Stream.TTVAddon.FFZ"));
-	ui->twitchAddonDropdown->addItem(QTStr("Basic.Settings.Stream.TTVAddon.Both"));
 
 	connect(ui->ignoreRecommended, &QCheckBox::clicked, this, &OBSBasicSettings::DisplayEnforceWarning);
 	connect(ui->ignoreRecommended, &QCheckBox::toggled, this, &OBSBasicSettings::UpdateResFPSLimits);
@@ -142,9 +138,6 @@ void OBSBasicSettings::LoadStream1Settings()
 
 		bool bw_test = obs_data_get_bool(settings, "bwtest");
 		ui->bandwidthTestEnable->setChecked(bw_test);
-
-		idx = config_get_int(main->Config(), "Twitch", "AddonChoice");
-		ui->twitchAddonDropdown->setCurrentIndex(idx);
 	}
 
 	ui->enableMultitrackVideo->setChecked(config_get_bool(main->Config(), "Stream1", "EnableMultitrackVideo"));
@@ -300,21 +293,10 @@ void OBSBasicSettings::SaveStream1Settings()
 		}
 	}
 
-	if (!!auth && strcmp(auth->service(), "Twitch") == 0) {
-		bool choiceExists = config_has_user_value(main->Config(), "Twitch", "AddonChoice");
-		int currentChoice = config_get_int(main->Config(), "Twitch", "AddonChoice");
-		int newChoice = ui->twitchAddonDropdown->currentIndex();
-
-		config_set_int(main->Config(), "Twitch", "AddonChoice", newChoice);
-
-		if (choiceExists && currentChoice != newChoice) {
-			forceAuthReload = true;
-		}
-
-		obs_data_set_bool(settings, "bwtest", ui->bandwidthTestEnable->isChecked());
-	} else {
-		obs_data_set_bool(settings, "bwtest", false);
-	}
+	/* QCi: was a `auth->service() == "Twitch"` branch that persisted the BTTV/FFZ addon choice
+	 * and enabled Twitch's bandwidth test. Nothing can authenticate as Twitch in this fork, so
+	 * the branch was unreachable and only the else-arm survives. */
+	obs_data_set_bool(settings, "bwtest", false);
 
 	if (whip) {
 		obs_data_set_string(settings, "service", "WHIP");
@@ -638,8 +620,6 @@ void OBSBasicSettings::ServiceChanged(bool resetFields)
 
 	ui->disconnectAccount->setVisible(false);
 	ui->bandwidthTestEnable->setVisible(false);
-	ui->twitchAddonDropdown->setVisible(false);
-	ui->twitchAddonLabel->setVisible(false);
 
 	if (resetFields || lastService != service.c_str()) {
 		reset_service_ui_fields(ui.get(), service, loading);
@@ -748,9 +728,11 @@ void OBSBasicSettings::UpdateServerList()
 		ui->server->addItem(name, server);
 	}
 
-	if (serviceName == "Twitch" || serviceName == "Amazon IVS") {
-		ui->server->addItem(QTStr("Basic.Settings.Stream.SpecifyCustomServer"), CustomServerUUID());
-	}
+	/* QCi: Twitch and Amazon IVS were the only services offered a "specify a custom server"
+	 * row here (they resolved their ingests at runtime). Both are gone from
+	 * plugins/rtmp-services/data/services.json, so the row can never apply. Note that this is
+	 * NOT the Custom RTMP service -- that is a separate entry in the service dropdown and is
+	 * unaffected. CustomServerUUID() is still used by the load/save/IsCustomServer paths. */
 }
 
 void OBSBasicSettings::on_show_clicked()
@@ -826,13 +808,10 @@ void OBSBasicSettings::OnOAuthStreamKeyConnected()
 		ui->connectedAccountLabel->setVisible(false);
 		ui->connectedAccountText->setVisible(false);
 
-		if (strcmp(a->service(), "Twitch") == 0) {
-			ui->bandwidthTestEnable->setVisible(true);
-			ui->twitchAddonLabel->setVisible(true);
-			ui->twitchAddonDropdown->setVisible(true);
-		} else {
-			ui->bandwidthTestEnable->setChecked(false);
-		}
+		/* QCi: was a `a->service() == "Twitch"` branch revealing the bandwidth-test checkbox
+		 * and the BTTV/FFZ addon dropdown. Only Restream (and YouTube, below) can connect an
+		 * account in this fork, so only the else-arm is reachable. */
+		ui->bandwidthTestEnable->setChecked(false);
 #ifdef YOUTUBE_ENABLED
 		if (IsYouTubeService(a->service())) {
 			ui->key->clear();
@@ -874,15 +853,6 @@ void OBSBasicSettings::on_connectAccount_clicked()
 	auth = OAuthStreamKey::Login(this, service);
 	if (!!auth) {
 		OnAuthConnected();
-#ifdef YOUTUBE_ENABLED
-		if (cef_js_avail && IsYouTubeService(service)) {
-			if (!main->GetYouTubeAppDock()) {
-				main->NewYouTubeAppDock();
-			}
-			main->GetYouTubeAppDock()->AccountConnected();
-		}
-#endif
-
 		ui->useStreamKeyAdv->setVisible(false);
 	}
 }
@@ -915,22 +885,10 @@ void OBSBasicSettings::on_disconnectAccount_clicked()
 	reset_service_ui_fields(ui.get(), service, loading);
 
 	ui->bandwidthTestEnable->setVisible(false);
-	ui->twitchAddonDropdown->setVisible(false);
-	ui->twitchAddonLabel->setVisible(false);
 	ui->key->setText("");
 
 	ui->connectedAccountLabel->setVisible(false);
 	ui->connectedAccountText->setVisible(false);
-
-#ifdef YOUTUBE_ENABLED
-	if (cef_js_avail && IsYouTubeService(service)) {
-		if (!main->GetYouTubeAppDock()) {
-			main->NewYouTubeAppDock();
-		}
-		main->GetYouTubeAppDock()->AccountDisconnected();
-		main->GetYouTubeAppDock()->Update();
-	}
-#endif
 }
 
 void OBSBasicSettings::on_useStreamKey_clicked()
@@ -1191,7 +1149,35 @@ bool OBSBasicSettings::ResFPSValid(obs_service_resolution *res_list, size_t res_
 	return true;
 }
 
-extern void set_closest_res(int &cx, int &cy, struct obs_service_resolution *res_list, size_t count);
+/* MOVED HERE FROM wizards/AutoConfigTestPage.cpp, which is deleted with the rest of the wizard.
+ *
+ * It was defined there and reached from this file by a bare `extern` declaration — no header, no
+ * include, nothing tying the two together except the linker. Deleting the wizard therefore broke
+ * the SETTINGS dialog's service resolution clamp, and it broke it at LINK time in a file that
+ * mentions neither the wizard nor this function: "Undefined symbols: set_closest_res, referenced
+ * from OBSBasicSettings::UpdateResFPSLimits()". Nothing in the source of either file said they
+ * were coupled.
+ *
+ * It is `static` now, so the coupling cannot be recreated by another `extern` somewhere else. */
+static void set_closest_res(int &cx, int &cy, struct obs_service_resolution *res_list, size_t count)
+{
+	int best_pixel_diff = 0x7FFFFFFF;
+	int start_cx = cx;
+	int start_cy = cy;
+
+	for (size_t i = 0; i < count; i++) {
+		struct obs_service_resolution &res = res_list[i];
+		int pixel_cx_diff = abs(start_cx - res.cx);
+		int pixel_cy_diff = abs(start_cy - res.cy);
+		int pixel_diff = pixel_cx_diff + pixel_cy_diff;
+
+		if (pixel_diff < best_pixel_diff) {
+			best_pixel_diff = pixel_diff;
+			cx = res.cx;
+			cy = res.cy;
+		}
+	}
+}
 
 /* Checks for and updates the resolution and FPS limits of a service, if any.
  *

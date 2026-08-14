@@ -278,67 +278,6 @@
                  </widget>
                 </item>
                 <item>
-                 <widget class="QGroupBox" name="updateSettingsGroupBox">
-                  <property name="title">
-                   <string>Basic.Settings.General.Updater</string>
-                  </property>
-                  <layout class="QFormLayout" name="formLayout_20">
-                   <property name="fieldGrowthPolicy">
-                    <enum>QFormLayout::FieldGrowthPolicy::AllNonFixedFieldsGrow</enum>
-                   </property>
-                   <property name="labelAlignment">
-                    <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
-                   </property>
-                   <property name="topMargin">
-                    <number>2</number>
-                   </property>
-                   <item row="0" column="0">
-                    <widget class="QLabel" name="updateChannelLabel">
-                     <property name="text">
-                      <string>Basic.Settings.General.UpdateChannel</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="0" column="1">
-                    <widget class="QComboBox" name="updateChannelBox">
-                     <property name="editable">
-                      <bool>false</bool>
-                     </property>
-                     <property name="currentText">
-                      <string/>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="1" column="1">
-                    <widget class="QCheckBox" name="enableAutoUpdates">
-                     <property name="text">
-                      <string>Basic.Settings.General.EnableAutoUpdates</string>
-                     </property>
-                     <property name="checked">
-                      <bool>true</bool>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="1" column="0">
-                    <spacer name="horizontalSpacer_29">
-                     <property name="orientation">
-                      <enum>Qt::Orientation::Horizontal</enum>
-                     </property>
-                     <property name="sizeType">
-                      <enum>QSizePolicy::Policy::Fixed</enum>
-                     </property>
-                     <property name="sizeHint" stdset="0">
-                      <size>
-                       <width>170</width>
-                       <height>20</height>
-                      </size>
-                     </property>
-                    </spacer>
-                   </item>
-                  </layout>
-                 </widget>
-                </item>
-                <item>
                  <widget class="QGroupBox" name="groupBox_16">
                   <property name="title">
                    <string>Basic.Settings.Output</string>
@@ -806,83 +745,6 @@
                      </property>
                      <property name="checked">
                       <bool>true</bool>
-                     </property>
-                    </widget>
-                   </item>
-                  </layout>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QGroupBox" name="groupBoxMultiview">
-                  <property name="title">
-                   <string>Basic.Settings.General.Multiview</string>
-                  </property>
-                  <layout class="QFormLayout" name="formLayoutMultiview">
-                   <property name="fieldGrowthPolicy">
-                    <enum>QFormLayout::FieldGrowthPolicy::AllNonFixedFieldsGrow</enum>
-                   </property>
-                   <property name="labelAlignment">
-                    <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
-                   </property>
-                   <property name="topMargin">
-                    <number>2</number>
-                   </property>
-                   <item row="0" column="0">
-                    <spacer name="horizontalSpacerMultiview">
-                     <property name="orientation">
-                      <enum>Qt::Orientation::Horizontal</enum>
-                     </property>
-                     <property name="sizeType">
-                      <enum>QSizePolicy::Policy::Fixed</enum>
-                     </property>
-                     <property name="sizeHint" stdset="0">
-                      <size>
-                       <width>170</width>
-                       <height>5</height>
-                      </size>
-                     </property>
-                    </spacer>
-                   </item>
-                   <item row="0" column="1">
-                    <widget class="QCheckBox" name="multiviewMouseSwitch">
-                     <property name="text">
-                      <string>Basic.Settings.General.Multiview.MouseSwitch</string>
-                     </property>
-                     <property name="checked">
-                      <bool>true</bool>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="1" column="1">
-                    <widget class="QCheckBox" name="multiviewDrawNames">
-                     <property name="text">
-                      <string>Basic.Settings.General.Multiview.DrawSourceNames</string>
-                     </property>
-                     <property name="checked">
-                      <bool>true</bool>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="2" column="1">
-                    <widget class="QCheckBox" name="multiviewDrawAreas">
-                     <property name="text">
-                      <string>Basic.Settings.General.Multiview.DrawSafeAreas</string>
-                     </property>
-                     <property name="checked">
-                      <bool>true</bool>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="3" column="1">
-                    <widget class="QComboBox" name="multiviewLayout"/>
-                   </item>
-                   <item row="3" column="0">
-                    <widget class="QLabel" name="label_64">
-                     <property name="text">
-                      <string>Basic.Settings.General.MultiviewLayout</string>
-                     </property>
-                     <property name="buddy">
-                      <cstring>multiviewLayout</cstring>
                      </property>
                     </widget>
                    </item>
@@ -2200,20 +2062,9 @@
                  <property name="bottomMargin">
                   <number>9</number>
                  </property>
+                 <!-- QCi: rows for twitchAddonLabel / twitchAddonDropdown (the BTTV / FrankerFaceZ
+                      chat-addon picker) removed; remaining rows renumbered from 0. -->
                  <item row="0" column="0">
-                  <widget class="QLabel" name="twitchAddonLabel">
-                   <property name="text">
-                    <string>Basic.Settings.Stream.TTVAddon</string>
-                   </property>
-                   <property name="buddy">
-                    <cstring>twitchAddonDropdown</cstring>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="0" column="1">
-                  <widget class="QComboBox" name="twitchAddonDropdown"/>
-                 </item>
-                 <item row="1" column="0">
                   <spacer name="horizontalSpacer_18_1">
                    <property name="orientation">
                     <enum>Qt::Orientation::Horizontal</enum>
@@ -2226,21 +2077,21 @@
                    </property>
                   </spacer>
                  </item>
-                 <item row="1" column="1">
+                 <item row="0" column="1">
                   <widget class="QCheckBox" name="bandwidthTestEnable">
                    <property name="text">
                     <string>Basic.Settings.Stream.BandwidthTestMode</string>
                    </property>
                   </widget>
                  </item>
-                 <item row="2" column="1">
+                 <item row="1" column="1">
                   <widget class="QCheckBox" name="ignoreRecommended">
                    <property name="text">
                     <string>Basic.Settings.Stream.IgnoreRecommended</string>
                    </property>
                   </widget>
                  </item>
-                 <item row="3" column="1">
+                 <item row="2" column="1">
                   <widget class="QLabel" name="enforceSettingsLabel">
                    <property name="text">
                     <string notr="true"/>
@@ -8818,8 +8669,6 @@
   <tabstop>language</tabstop>
   <tabstop>openStatsOnStartup</tabstop>
   <tabstop>hideOBSFromCapture</tabstop>
-  <tabstop>updateChannelBox</tabstop>
-  <tabstop>enableAutoUpdates</tabstop>
   <tabstop>warnBeforeStreamStart</tabstop>
   <tabstop>warnBeforeStreamStop</tabstop>
   <tabstop>warnBeforeRecordStop</tabstop>
@@ -8848,10 +8697,6 @@
   <tabstop>doubleClickSwitch</tabstop>
   <tabstop>studioPortraitLayout</tabstop>
   <tabstop>prevProgLabelToggle</tabstop>
-  <tabstop>multiviewMouseSwitch</tabstop>
-  <tabstop>multiviewDrawNames</tabstop>
-  <tabstop>multiviewDrawAreas</tabstop>
-  <tabstop>multiviewLayout</tabstop>
   <tabstop>theme</tabstop>
   <tabstop>themeVariant</tabstop>
   <tabstop>service</tabstop>
@@ -8867,7 +8712,6 @@
   <tabstop>disconnectAccount</tabstop>
   <tabstop>bandwidthTestEnable</tabstop>
   <tabstop>useAuth</tabstop>
-  <tabstop>twitchAddonDropdown</tabstop>
   <tabstop>authUsername</tabstop>
   <tabstop>authPw</tabstop>
   <tabstop>authPwShow</tabstop>

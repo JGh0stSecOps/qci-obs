@@ -31,28 +31,14 @@ macro(check_obs_websocket)
 endmacro()
 
 # Add plugins in alphabetical order to retain order in IDE projects
-add_obs_plugin(
-    aja
-    PLATFORMS WINDOWS MACOS LINUX
-    WITH_MESSAGE
-)
-add_obs_plugin(aja-output-ui PLATFORMS WINDOWS MACOS LINUX WITH_MESSAGE)
+#
+# The AJA and DeckLink families (aja, aja-output-ui, decklink, decklink-captions,
+# decklink-output-ui) were removed from this fork. They drive PCIe/Thunderbolt broadcast capture
+# cards; this is a personal, never-distributed build whose capture chain is webcam + screen capture
+# + browser sources. Unlike the Windows/Linux-gated plugins below, those five were built FOR MACOS,
+# so they cost every local build real compile time. obs-libfdk went with them: it is a second AAC
+# encoder next to coreaudio-encoder, which is the one macOS actually uses.
 add_obs_plugin(coreaudio-encoder PLATFORMS WINDOWS MACOS)
-add_obs_plugin(
-    decklink
-    PLATFORMS WINDOWS MACOS LINUX
-    WITH_MESSAGE
-)
-add_obs_plugin(
-    decklink-captions
-    PLATFORMS WINDOWS MACOS LINUX
-    WITH_MESSAGE
-)
-add_obs_plugin(
-    decklink-output-ui
-    PLATFORMS WINDOWS MACOS LINUX
-    WITH_MESSAGE
-)
 add_obs_plugin(
     frontend-tools
     PLATFORMS WINDOWS MACOS LINUX
@@ -76,7 +62,6 @@ check_obs_browser()
 
 add_obs_plugin(obs-ffmpeg)
 add_obs_plugin(obs-filters)
-add_obs_plugin(obs-libfdk)
 add_obs_plugin(obs-nvenc PLATFORMS WINDOWS LINUX ARCHITECTURES x64 x86_64)
 add_obs_plugin(obs-outputs)
 add_obs_plugin(
@@ -97,6 +82,21 @@ check_obs_websocket()
 
 add_obs_plugin(obs-x264)
 add_obs_plugin(oss-audio PLATFORMS FREEBSD OPENBSD)
+
+# QCi: fork-only plugins. Out of alphabetical order on purpose — upstream's comment above asks for
+# alphabetical, and "qci-" would sort between obs-x264 and rtmp-services, which is exactly where a
+# merge conflict lands on every rebase against upstream. Keeping fork-only plugins in one block
+# after the upstream list makes an upstream merge a no-op here. See
+# plugins/qci-vision-person/CMakeLists.txt for why these are in-tree rather than installed
+# alongside the third-party plugins.
+#
+# qci-audio-unit hosts AudioUnit effects — the macOS-native effect format. It sits ALONGSIDE
+# obs-vst rather than replacing it: the claim that VST2 hosting is inert on Apple Silicon was
+# checked against this machine and does not hold (both installed VST2 bundles are arm64-native).
+# See plugins/qci-audio-unit/qci-audio-unit.m for the measurement.
+add_obs_plugin(qci-vision-person PLATFORMS MACOS)
+add_obs_plugin(qci-audio-unit PLATFORMS MACOS)
+
 add_obs_plugin(rtmp-services)
 add_obs_plugin(sndio PLATFORMS LINUX FREEBSD OPENBSD)
 add_obs_plugin(text-freetype2)

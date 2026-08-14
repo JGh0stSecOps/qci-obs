@@ -73,7 +73,6 @@ bool opt_start_virtualcam = false;
 bool opt_minimize_tray = false;
 bool opt_allow_opengl = false;
 bool opt_always_on_top = false;
-bool opt_disable_updater = false;
 bool opt_disable_missing_files_check = false;
 string opt_starting_collection;
 string opt_starting_profile;
@@ -1017,9 +1016,6 @@ int main(int argc, char *argv[])
 		} else if (arg_is(argv[i], "--allow-opengl", nullptr)) {
 			opt_allow_opengl = true;
 
-		} else if (arg_is(argv[i], "--disable-updater", nullptr)) {
-			opt_disable_updater = true;
-
 		} else if (arg_is(argv[i], "--disable-missing-files-check", nullptr)) {
 			opt_disable_missing_files_check = true;
 
@@ -1048,7 +1044,6 @@ int main(int argc, char *argv[])
 				"--verbose: Make log more verbose.\n"
 				"--always-on-top: Start in 'always on top' mode.\n\n"
 				"--unfiltered_log: Make log unfiltered.\n\n"
-				"--disable-updater: Disable built-in updater (Windows/Mac only)\n\n"
 				"--disable-missing-files-check: Disable the missing files dialog which can appear on startup.\n\n";
 
 #ifdef _WIN32
@@ -1070,11 +1065,6 @@ int main(int argc, char *argv[])
 				os_file_exists(BASE_PATH "/obs_portable_mode") ||
 				os_file_exists(BASE_PATH "/portable_mode.txt") ||
 				os_file_exists(BASE_PATH "/obs_portable_mode.txt");
-	}
-
-	if (!opt_disable_updater) {
-		opt_disable_updater = os_file_exists(BASE_PATH "/disable_updater") ||
-				      os_file_exists(BASE_PATH "/disable_updater.txt");
 	}
 
 	if (!opt_disable_missing_files_check) {

@@ -28,8 +28,8 @@
 #include <obs-module.h>
 
 #ifdef YOUTUBE_ENABLED
-#include <docks/YouTubeAppDock.hpp>
 #endif
+#include <docks/QCiRigDocks.hpp>
 #include <dialogs/NameDialog.hpp>
 #include <dialogs/QCiAbout.hpp>
 #include <dialogs/QCiBasicAdvAudio.hpp>
@@ -41,9 +41,6 @@
 #include <settings/QCiBasicSettings.hpp>
 #include <utility/QuickTransition.hpp>
 #include <utility/SceneRenameDelegate.hpp>
-#if defined(_WIN32) || defined(WHATSNEW_ENABLED)
-#include <utility/WhatsNewInfoThread.hpp>
-#endif
 #include <widgets/AudioMixer.hpp>
 #include <widgets/QCiProjector.hpp>
 
@@ -372,7 +369,7 @@ OBSBasic::OBSBasic(QWidget *parent) : OBSMainWindow(parent), undo_s(ui), ui(new 
 	resizeDocks({ui->scenesDock, ui->sourcesDock}, {sideDockWidth, sideDockWidth}, Qt::Horizontal);
 	addDockWidget(Qt::BottomDockWidgetArea, controlsDock);
 
-	startingDockLayout = saveState();
+	startingDockLayout = saveState(QCI_DOCK_STATE_VERSION);
 
 	statsDock = new OBSDock();
 	statsDock->setObjectName(QStringLiteral("statsDock"));
@@ -496,7 +493,6 @@ OBSBasic::OBSBasic(QWidget *parent) : OBSMainWindow(parent), undo_s(ui), ui(new 
 	ui->actionRemoveSource->setShortcuts({Qt::Key_Backspace, Qt::Key_Delete});
 	ui->actionRemoveScene->setShortcuts({Qt::Key_Backspace, Qt::Key_Delete});
 
-	ui->actionCheckForUpdates->setMenuRole(QAction::AboutQtRole);
 	ui->action_Settings->setMenuRole(QAction::PreferencesRole);
 	ui->actionShowMacPermissions->setMenuRole(QAction::ApplicationSpecificRole);
 	delete ui->actionE_xit;
@@ -533,18 +529,19 @@ OBSBasic::OBSBasic(QWidget *parent) : OBSMainWindow(parent), undo_s(ui), ui(new 
 
 	/* Setup dock toggle action
 	 * And hide all docks before restoring parent geometry */
-#define SETUP_DOCK(dock)                                    \
-	setupDockAction(dock);                              \
-	ui->menuDocks->addAction(dock->toggleViewAction()); \
-	dock->setVisible(false);
-
-	SETUP_DOCK(ui->scenesDock);
-	SETUP_DOCK(ui->sourcesDock);
-	SETUP_DOCK(ui->mixerDock);
-	SETUP_DOCK(ui->transitionsDock);
-	SETUP_DOCK(controlsDock);
-	SETUP_DOCK(statsDock);
-#undef SETUP_DOCK
+	/* The fourth and last hand-written copy of the builtin-dock list, now driven by the table in
+	 * QCiBasic_Docks.cpp. A dock added to BuiltinDockId but not wired here would have been the
+	 * quietest of the four failures: no menu entry, so the operator has no way to bring it back
+	 * once it is hidden, and nothing anywhere would have said so. */
+	for (int i = 0; i <= int(BUILTIN_STATS); i++) {
+		QDockWidget *dock = BuiltinDock(BuiltinDockId(i));
+		if (!dock) {
+			continue;
+		}
+		setupDockAction(dock);
+		ui->menuDocks->addAction(dock->toggleViewAction());
+		dock->setVisible(false);
+	}
 
 	// Register shortcuts for Undo/Redo
 	ui->actionMainUndo->setShortcut(Qt::CTRL | Qt::Key_Z);
@@ -583,13 +580,9 @@ OBSBasic::OBSBasic(QWidget *parent) : OBSMainWindow(parent), undo_s(ui), ui(new 
 	QPoint newPos = curPos + statsDockPos;
 	statsDock->move(newPos);
 
-	ui->actionReleaseNotes->setVisible(true);
 
 	ui->previewDisabledWidget->setContextMenuPolicy(Qt::CustomContextMenu);
 	connect(ui->enablePreviewButton, &QPushButton::clicked, this, &OBSBasic::TogglePreview);
-
-	connect(ui->scenes, &SceneTree::scenesReordered, ui->scenes,
-		[]() { OBSProjector::UpdateMultiviewProjectors(); });
 
 	connect(App(), &OBSApp::StyleChanged, this, [this]() { OnEvent(OBS_FRONTEND_EVENT_THEME_CHANGED); });
 #ifndef __APPLE__
@@ -1228,41 +1221,81 @@ void OBSBasic::OBSInit()
 	statsDock->setWidget(statsDlg);
 
 	/* ----------------------------- */
-	/* add custom browser docks      */
-#if defined(BROWSER_AVAILABLE) && defined(YOUTUBE_ENABLED)
-	YouTubeAppDock::CleanupYouTubeUrls();
-#endif
+	/* CUSTOM BROWSER DOCKS WERE ADDED HERE, and they are the mechanism this fork replaces.
+	 *
+	 * "Custom Browser Docks…" opened a dialog of title/URL rows and turned each one into a
+	 * single-purpose CEF window. Every ?bare=1&tab=<name> URL in qci-rig's control.html is one of
+	 * those, which is exactly the arrangement the operator looked at and called stock OBS. The
+	 * native rig docks below replace all of them: declared in source, named, laid out by default,
+	 * covered by a test, and — for the pane PRIVACY HOLD is on — impossible to close or tabify.
+	 * Leaving the dialog in place would have left a path straight back.
+	 *
+	 * CEF ITSELF STAYS. The chat pane embeds somebody else's live-chat page and there is no
+	 * native protocol to render one; that is the single sanctioned external request in the rig.
+	 * What is gone is the ability to bolt an arbitrary URL onto the window as a dock.
+	 *
+	 * YouTubeAppDock::CleanupYouTubeUrls() also ran here — it swept YouTube control-panel URLs
+	 * out of the saved extraBrowserDocks list on every launch. Both the dock class and the list
+	 * it cleaned are gone.
+	 */
 
-#ifdef BROWSER_AVAILABLE
-	if (cef) {
-		QAction *action = new QAction(QTStr("Basic.MainMenu.Docks."
-						    "CustomBrowserDocks"),
-					      this);
-		ui->menuDocks->insertAction(ui->scenesDock->toggleViewAction(), action);
-		connect(action, &QAction::triggered, this, &OBSBasic::ManageExtraBrowserDocks);
-		ui->menuDocks->insertSeparator(ui->scenesDock->toggleViewAction());
+	/* ----------------------------- */
+	/* the rig's own docks           */
 
-		LoadExtraBrowserDocks();
-	}
-#endif
-
-#ifdef YOUTUBE_ENABLED
-	/* setup YouTube app dock */
-	if (YouTubeAppDock::IsYTServiceSelected()) {
-		NewYouTubeAppDock();
-	}
-#endif
+	/* FIRST PARTY, NOT "custom browser docks". These are declared in source (docks/QCiRigDocks.cpp),
+	 * named, laid out by default and covered by a test — the block above loads URLs a user typed
+	 * into a dialog, which a fresh profile does not have and which no code can reason about.
+	 *
+	 * Registered BEFORE the saved DockState is read, because restoreState() can only place a dock
+	 * that already exists. */
+	QCiRigDocks::Load(this, ui->menuDocks);
 
 	const char *dockStateStr = config_get_string(App()->GetUserConfig(), "BasicWindow", "DockState");
 
 	if (!dockStateStr) {
 		on_resetDocks_triggered(true);
 	} else {
+		/* ── VERSIONED, AND THE OLD ONE IS KEPT ─────────────────────────────────────────
+		 *
+		 * The fork tabifies the builtin docks; every DockState written before that change
+		 * describes six side-by-side docks and restoring it faithfully reproduces exactly
+		 * the layout this work exists to replace. Qt's own versioning is the mechanism for
+		 * that: restoreState() returns false when the stored version differs, and false
+		 * here already means "fall back to the fresh layout".
+		 *
+		 * ⚠️ BACK IT UP BEFORE SPENDING IT, and back it up ONLY ONCE. The operator's tuned
+		 * layout is not reproducible — it is months of dragging — so the upgrade copies it
+		 * to DockState.v0 first, making a rollback a config edit rather than a re-do. The
+		 * `if (!...v0)` guard is load-bearing: without it, the SECOND launch would copy the
+		 * now-current v1 state over the v0 backup and the original would be gone for good.
+		 */
+		if (!config_get_string(App()->GetUserConfig(), "BasicWindow", "DockState.v0")) {
+			config_set_string(App()->GetUserConfig(), "BasicWindow", "DockState.v0", dockStateStr);
+			config_save_safe(App()->GetUserConfig(), "tmp", nullptr);
+			blog(LOG_INFO, "[Docks] saved the pre-tabify dock layout to BasicWindow/DockState.v0");
+		}
+
 		QByteArray dockState = QByteArray::fromBase64(QByteArray(dockStateStr));
-		if (!restoreState(dockState)) {
+		if (!restoreState(dockState, QCI_DOCK_STATE_VERSION)) {
+			blog(LOG_INFO, "[Docks] saved layout is not version %d — applying the fork's default",
+			     QCI_DOCK_STATE_VERSION);
 			on_resetDocks_triggered(true);
 		}
 	}
+
+	/* …and AFTER it, once per profile. A saved DockState written before these docks existed has
+	 * no opinion about them, so restoreState() leaves them stacked and unsized wherever
+	 * addDockWidget() dropped them — which is the operator's existing profile on the first run
+	 * after this ships. Both branches above are covered: the reset path already calls
+	 * ApplyDefaultLayout() unconditionally, and this is a no-op once the flag is set. */
+	QCiRigDocks::ApplyDefaultLayoutIfNeeded(this);
+
+	/* …and this one is UNCONDITIONAL, every launch, because it is about a control whose visibility
+	 * a saved file does not get a vote on. restoreState() faithfully restores whatever the previous
+	 * session wrote — including a hidden QCi Control dock, written by a build in which that dock
+	 * could still be closed — and the line above has already fired for that profile, so nothing
+	 * else would ever put PRIVACY HOLD back on the glass. */
+	QCiRigDocks::EnsureUndismissableVisible(this);
 
 	bool pre23Defaults = config_get_bool(App()->GetUserConfig(), "General", "Pre23Defaults");
 	if (pre23Defaults) {
@@ -1292,7 +1325,11 @@ void OBSBasic::OBSInit()
 	disableColorSpaceConversion(this);
 #endif
 
-	bool has_last_version = config_has_user_value(App()->GetAppConfig(), "General", "LastVersion");
+	/* `has_last_version` was read here too, and its only consumer was the first-run trigger for the
+	 * Auto-Configuration Wizard: `!first_run && !has_last_version && !Active()` launched it. The
+	 * wizard is deleted (see cmake/ui-wizards.cmake), so the read is gone with it rather than left
+	 * standing as a value nothing looks at. FirstRun is still WRITTEN, because it is the flag that
+	 * says a profile has been opened at least once and other code reads it. */
 	bool first_run = config_get_bool(App()->GetUserConfig(), "General", "FirstRun");
 
 	if (!first_run) {
@@ -1300,19 +1337,6 @@ void OBSBasic::OBSInit()
 		config_save_safe(App()->GetUserConfig(), "tmp", nullptr);
 	}
 
-	if (!first_run && !has_last_version && !Active()) {
-		QMetaObject::invokeMethod(this, &OBSBasic::on_autoConfigure_triggered, Qt::QueuedConnection);
-	}
-
-#if (defined(_WIN32) || defined(__APPLE__)) && (OBS_RELEASE_CANDIDATE > 0 || OBS_BETA > 0)
-	/* Automatically set branch to "beta" the first time a pre-release build is run. */
-	if (!config_get_bool(App()->GetAppConfig(), "General", "AutoBetaOptIn")) {
-		config_set_string(App()->GetAppConfig(), "General", "UpdateBranch", "beta");
-		config_set_bool(App()->GetAppConfig(), "General", "AutoBetaOptIn", true);
-		config_save_safe(App()->GetAppConfig(), "tmp", nullptr);
-	}
-#endif
-	TimedCheckForUpdates();
 
 	emit userSettingChanged("BasicWindow", "VerticalVolumeControl");
 
@@ -1322,29 +1346,15 @@ void OBSBasic::OBSInit()
 
 	OBSBasicStats::InitializeValues();
 
-	/* ----------------------- */
-	/* Add multiview menu      */
-
-	ui->viewMenu->addSeparator();
-
-	connect(ui->viewMenu->menuAction(), &QAction::hovered, this, &OBSBasic::updateMultiviewProjectorMenu);
-	OBSBasic::updateMultiviewProjectorMenu();
-
 	ui->sources->UpdateIcons();
 
-#if !defined(_WIN32)
-	delete ui->actionRepair;
-	ui->actionRepair = nullptr;
-#if !defined(__APPLE__)
+#if !defined(_WIN32) && !defined(__APPLE__)
 	delete ui->actionShowCrashLogs;
 	delete ui->actionUploadLastCrashLog;
 	delete ui->menuCrashLogs;
-	delete ui->actionCheckForUpdates;
 	ui->actionShowCrashLogs = nullptr;
 	ui->actionUploadLastCrashLog = nullptr;
 	ui->menuCrashLogs = nullptr;
-	ui->actionCheckForUpdates = nullptr;
-#endif
 #endif
 
 #ifdef __APPLE__
@@ -1355,20 +1365,6 @@ void OBSBasic::OBSInit()
 	/* Don't show menu to raise macOS-only permissions dialog */
 	delete ui->actionShowMacPermissions;
 	ui->actionShowMacPermissions = nullptr;
-#endif
-
-#if defined(_WIN32) || defined(__APPLE__)
-	if (App()->IsUpdaterDisabled()) {
-		ui->actionCheckForUpdates->setEnabled(false);
-#if defined(_WIN32)
-		ui->actionRepair->setEnabled(false);
-#endif
-	}
-#endif
-
-#ifndef WHATSNEW_ENABLED
-	delete ui->actionShowWhatsNew;
-	ui->actionShowWhatsNew = nullptr;
 #endif
 
 	if (safe_mode) {
@@ -1404,17 +1400,6 @@ void OBSBasic::OnFirstLoad()
 {
 	OnEvent(OBS_FRONTEND_EVENT_FINISHED_LOADING);
 
-#ifdef WHATSNEW_ENABLED
-	/* Attempt to load init screen if available */
-	if (cef) {
-		WhatsNewInfoThread *wnit = new WhatsNewInfoThread();
-		connect(wnit, &WhatsNewInfoThread::Result, this, &OBSBasic::ReceivedIntroJson, Qt::QueuedConnection);
-
-		introCheckThread.reset(wnit);
-		introCheckThread->start();
-	}
-#endif
-
 	Auth::Load();
 
 	bool showLogViewerOnStartup = config_get_bool(App()->GetUserConfig(), "LogViewer", "ShowLogStartup");
@@ -1434,19 +1419,7 @@ void OBSBasic::applicationShutdown() noexcept
 	QApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
 #endif
 
-	if (updateCheckThread && updateCheckThread->isRunning()) {
-		updateCheckThread->wait();
-	}
-
-	if (patronJsonThread && patronJsonThread->isRunning()) {
-		patronJsonThread->wait();
-	}
-
 	delete screenshotData;
-	delete previewProjectorSource;
-	delete previewProjectorMain;
-	delete sourceProjector;
-	delete sceneProjectorMenu;
 	delete scaleFilteringMenu;
 	delete blendingModeMenu;
 	delete colorMenu;
@@ -1650,7 +1623,6 @@ int OBSBasic::ResetVideo()
 			(float)config_get_uint(activeConfiguration, "Video", "HdrNominalPeakLevel");
 		obs_set_video_levels(sdr_white_level, hdr_nominal_peak_level);
 		OBSBasicStats::InitializeValues();
-		OBSProjector::UpdateMultiviewProjectors();
 
 		if (!collections.empty()) {
 			const OBS::SceneCollection currentSceneCollection = OBSBasic::GetCurrentSceneCollection();
@@ -1901,13 +1873,8 @@ void OBSBasic::saveAll()
 		SaveProjectNow();
 
 		config_set_string(App()->GetUserConfig(), "BasicWindow", "DockState",
-				  saveState().toBase64().constData());
+				  saveState(QCI_DOCK_STATE_VERSION).toBase64().constData());
 
-#ifdef BROWSER_AVAILABLE
-		if (cef) {
-			SaveExtraBrowserDocks();
-		}
-#endif
 	});
 
 	config_set_int(App()->GetAppConfig(), "General", "LastVersion", LIBOBS_API_VER);
@@ -2002,15 +1969,6 @@ void OBSBasic::closeWindow()
 		outputHandler->StopVirtualCam();
 	}
 
-	if (introCheckThread) {
-		introCheckThread->wait();
-	}
-	if (whatsNewInitThread) {
-		whatsNewInitThread->wait();
-	}
-	if (updateCheckThread) {
-		updateCheckThread->wait();
-	}
 	if (logUploadThread) {
 		logUploadThread->wait();
 	}
@@ -2022,22 +1980,10 @@ void OBSBasic::closeWindow()
 	QApplication::sendPostedEvents(nullptr);
 
 	signalHandlers.clear();
-	delete extraBrowsers;
 
 	saveAll();
 
 	auth.reset();
-
-#ifdef BROWSER_AVAILABLE
-	ClearExtraBrowserDocks();
-
-#ifdef YOUTUBE_ENABLED
-	if (youtubeAppDock) {
-		RemoveDockWidget(youtubeAppDock->objectName());
-		youtubeAppDock = nullptr;
-	}
-#endif
-#endif
 
 	OnEvent(OBS_FRONTEND_EVENT_SCRIPTING_SHUTDOWN);
 
@@ -2160,15 +2106,6 @@ void OBSBasic::UpdateTitleBar()
 OBSBasic *OBSBasic::Get()
 {
 	return reinterpret_cast<OBSBasic *>(App()->GetMainWindow());
-}
-
-void OBSBasic::UpdatePatronJson(const std::string &text, const std::string &error)
-{
-	if (!error.empty()) {
-		return;
-	}
-
-	patronJson = text;
 }
 
 void OBSBasic::SetDisplayAffinity(QWindow *window)

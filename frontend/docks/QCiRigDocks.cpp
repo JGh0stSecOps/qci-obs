@@ -16,9 +16,12 @@
 ******************************************************************************/
 
 #include "QCiRigDocks.hpp"
+#include "QCiAudioStrip.hpp"
 #include "QCiDock.hpp"
+#include "QCiOperatorPane.hpp"
 #include "QCiRigClient.hpp"
 #include "QCiRigPanes.hpp"
+#include "QCiSceneRail.hpp"
 
 #include <widgets/QCiBasic.hpp>
 
@@ -64,7 +67,7 @@ static constexpr const char *QCI_RIG_BASE_URL_DEFAULT = "http://127.0.0.1:8778";
  *
  *     [QCiRig]
  *     BaseUrl=http://127.0.0.1:8778
- *     DocksPlaced=true
+ *     DockLayoutRev=2
  *
  * Editable from the UI at Docks → "QCi Rig Panel URL…" (PromptForBaseUrl below). It is USER config
  * rather than profile config on purpose: the rig's events server is a property of this machine,
@@ -72,7 +75,24 @@ static constexpr const char *QCI_RIG_BASE_URL_DEFAULT = "http://127.0.0.1:8778";
  * docks silently point somewhere else. */
 static constexpr const char *CFG_SECTION = "QCiRig";
 static constexpr const char *CFG_BASE_URL = "BaseUrl";
-static constexpr const char *CFG_DOCKS_PLACED = "DocksPlaced";
+
+/* ⚠️ A REVISION, NOT A BOOLEAN, AND THE DIFFERENCE IS A DOCK NOBODY CAN FIND.
+ *
+ * This used to be `DocksPlaced=true`: place the default layout once per profile, never again. That
+ * is right for adding a dock to a table that is otherwise unchanged, and it is WRONG the moment the
+ * table's rows change identity — which is exactly what happened when six docks became three. Qt's
+ * restoreState() has nothing to say about an objectName that did not exist when the state was
+ * written, so it leaves the new dock wherever addDockWidget() dropped it; and the old boolean was
+ * already true, so ApplyDefaultLayoutIfNeeded() declined to fix it. MEASURED on the operator's own
+ * profile: the scene rail came up as a 200px stub wedged under the stock Scenes dock in the bottom
+ * left, with the correct content inside it and no way to tell from looking that it was misplaced
+ * rather than badly designed.
+ *
+ * So: bump RIG_DOCK_LAYOUT_REV whenever a row is ADDED, REMOVED or RENAMED in RIG_DOCKS, and every
+ * existing profile re-places these docks exactly once. Do NOT bump it for a cosmetic change — this
+ * throws away where the operator dragged them, and that is a real cost that has to buy something. */
+static constexpr const char *CFG_DOCK_LAYOUT_REV = "DockLayoutRev";
+static constexpr int RIG_DOCK_LAYOUT_REV = 2;
 
 /* ─────────────────────────────────────────────────────────────────────────────────────────────
  * THE DOCK TABLE.
@@ -85,50 +105,93 @@ static constexpr const char *CFG_DOCKS_PLACED = "DocksPlaced";
  *     TAB_MODAL   tank/emotes · cam/camfx · mic/micfx · phone · scene · start · streams
  *                 policy · light · keys
  *
- * ⚠️ THE CONTROL PANE CARRIES TWO OF THOSE REGIONS, AND THAT IS WHY `spec` IS A LIST. The console
- * splits CONTROL (rA2: scene, mask, hold) from TRANSPORT (rA3: go live, the countdown arm) because
- * a 720x1280 panel shows one tab at a time and those are two tabs' worth of height. A dock column
- * has no such constraint and every one of those controls is in the same "act now" class, so the
- * native pane is one pane — and it therefore inherits rA3's safety marking as well as rA2's.
+ * ⚠️ SIX ROWS BECAME THREE, AND THAT IS THE POINT RATHER THAN A TIDY-UP.
+ *
+ * The table used to carry one CONTROL dock plus five tabified panes. Six QDockWidgets cost six Qt
+ * title bars — ~62-66px each, this fork's own measurement — plus a Qt tab bar over the five, which
+ * is upwards of 400px of Qt chrome in a 422px column, and a Qt tab bar is the single most
+ * recognisably-OBS object in the window. The five panes are now PAGES inside qciOperatorDock, behind
+ * a segmented pager that is explicitly not a QTabBar; the scene grid became its own rail; and the
+ * vitals became the flight strip's chips.
+ *
+ * ⚠️ AND THE SAFETY MARKING FOLLOWED THE BUTTON, NOT THE NAME. PRIVACY HOLD, the mask segment and
+ * the stream transport are all inside qciOperatorDock now, so that row is the one carrying
+ * dangerousWhenHidden — never tabified, never closable. A privacy control you cannot see is a
+ * privacy control you cannot verify.
+ *
+ * ⚠️ THE SCENE RAIL IS ALSO UNDISMISSABLE, AND THAT IS A NEW DECISION WITH A REASON. SCENE is one of
+ * the seven controls the rig allows on two surfaces, because it is one of the ones the operator
+ * needs without looking. A hidden rail does not merely inconvenience: it removes the only in-app way
+ * to leave a scene, which on this rig includes leaving a scene the watchdog is about to kill.
  *
  * ⚠️ ADDING A ROW IS A SAFETY DECISION. Read RigDockGroup in the header and Tabifiable() below
  * before you set the last two fields. A row that is tabified is a row that can be INVISIBLE.
  */
 /* clang-format off */
 static constexpr RigDock RIG_DOCKS[] = {
-	/* CONTROL — PRIVACY HOLD, mask mode, the scene picker, the stream transport and the vitals.
-	   Never tabified AND never closable: this is the pane the panic control lives on, and a
-	   privacy control you cannot see is a privacy control you cannot verify. "Did I leave it on
-	   VISION?" is not a question that should require clicking a tab to answer. */
-	{"qciRigControlDock", "QCiRigControlPane", "control transport", "QCiRig.Dock.Control",
-	 Qt::RightDockWidgetArea, true, true, GROUP_NEVER},
-	/* The audience-facing panes. These share one tab bar, which is the whole point: each dock
-	   burns ~62-66px on its own title bar, and five of them stacked would spend a third of a
-	   1080p side column on chrome. Nothing here is dangerous when hidden — a queue you are not
-	   looking at is a queue, not a live microphone. */
-	{"qciRigQueueDock", "QCiRigQueuePane", "queue", "QCiRig.Dock.Queue",
-	 Qt::RightDockWidgetArea, true, false, GROUP_PANEL},
-	{"qciRigReactionsDock", "QCiRigReactionsPane", "reactions", "QCiRig.Dock.Reactions",
-	 Qt::RightDockWidgetArea, true, false, GROUP_PANEL},
-	{"qciRigChatDock", "QCiRigChatPane", "chat", "QCiRig.Dock.Chat",
-	 Qt::RightDockWidgetArea, true, false, GROUP_PANEL},
-	{"qciRigTankDock", "QCiRigTankPane", "emotes", "QCiRig.Dock.Tank",
-	 Qt::RightDockWidgetArea, true, false, GROUP_PANEL},
-	{"qciRigAudioDock", "QCiRigAudioPane", "audio", "QCiRig.Dock.Audio",
-	 Qt::RightDockWidgetArea, true, false, GROUP_PANEL},
+	/* THE OPERATOR SECTION — the brief's central ask. PRIVACY HOLD, the mask segment, BRB, MIRROR,
+	   the five pages, and the stream transport, in ONE dock. Never tabified AND never closable. */
+	{"qciOperatorDock", "QCiOperatorPane", "control transport queue reactions chat emotes audio",
+	 "QCiRig.Dock.Operator", Qt::RightDockWidgetArea, true, true, GROUP_NEVER},
+	/* THE SCENE RAIL — a switcher column, on the left, where the eye already goes for scenes. */
+	{"qciSceneRailDock", "QCiSceneRail", "scene", "QCiRig.Dock.SceneRail",
+	 Qt::LeftDockWidgetArea, true, true, GROUP_NEVER},
+	/* THE AUDIO STRIP — a permanent horizontal band across the bottom, because audio is the failure
+	   mode a streamer cannot see. It is NOT dangerousWhenHidden: a mixer the operator has collapsed
+	   is a mixer, and every control on it also exists on the 7" panel. */
+	{"qciAudioStripDock", "QCiAudioStrip", "audio", "QCiRig.Dock.AudioStrip",
+	 Qt::BottomDockWidgetArea, true, false, GROUP_NEVER},
 };
 /* clang-format on */
 
 /* Suggested size per dock, in the same order as RIG_DOCKS. Kept beside the table rather than in it
-   so the table stays one screen wide and one grep away from being read as data. */
+   so the table stays one screen wide and one grep away from being read as data.
+   422 wide for the operator section and 260 for the rail are the reference-window numbers:
+   clamp(w*22%, 380, 460) and clamp(w*14%, 200, 260) at 1920. */
 static const QSize RIG_DOCK_SIZES[] = {
-	QSize(420, 560), QSize(420, 620), QSize(420, 520), QSize(420, 480), QSize(420, 360), QSize(420, 420),
+	QSize(422, 900),
+	QSize(260, 900),
+	QSize(1000, 128),
 };
 
 static constexpr int RIG_DOCK_COUNT = int(sizeof(RIG_DOCKS) / sizeof(RIG_DOCKS[0]));
 
 static_assert(sizeof(RIG_DOCK_SIZES) / sizeof(RIG_DOCK_SIZES[0]) == sizeof(RIG_DOCKS) / sizeof(RIG_DOCKS[0]),
 	      "RIG_DOCK_SIZES must have one entry per RIG_DOCKS row");
+
+/* ⚠️ THE COMPILE-TIME GATE THAT USED TO LIVE ON controlsDock, TRANSFERRED RATHER THAN DROPPED.
+ *
+ * QCiBasic_Docks.cpp asserts by name that the builtin dock holding Go Live is not tabifiable.
+ * GO LIVE and PRIVACY HOLD are both inside qciOperatorDock now, so the obligation moves with the
+ * BUTTON and not with the name — stated here, against this table, so that a later commit deleting
+ * the builtin assertion cannot silently drop the property while "cleaning up" the dock list.
+ *
+ * The predicate is duplicated as a constexpr rather than calling Tabifiable(): the runtime function
+ * below is the one the layout pass asks, and this is the same rule asked at compile time. Both are
+ * spelled out because a table is a promise and a predicate is a mechanism — a future row that sets
+ * dangerousWhenHidden AND a real group by mistake fails the build here rather than shipping a panic
+ * control that can be filed behind a tab. */
+constexpr bool TabifiableSpec(const RigDock &spec)
+{
+	return !spec.dangerousWhenHidden && spec.group != GROUP_NEVER;
+}
+
+constexpr bool NoDangerousDockIsTabifiable()
+{
+	for (const RigDock &spec : RIG_DOCKS) {
+		if (spec.dangerousWhenHidden && TabifiableSpec(spec)) {
+			return false;
+		}
+	}
+	return true;
+}
+
+static_assert(NoDangerousDockIsTabifiable(),
+	      "a dock marked dangerousWhenHidden must never be tabifiable — a tabified dock that is "
+	      "not the current tab is INVISIBLE, and PRIVACY HOLD and GO LIVE live on one of these");
+
+static_assert(RIG_DOCKS[0].dangerousWhenHidden && !TabifiableSpec(RIG_DOCKS[0]),
+	      "qciOperatorDock holds PRIVACY HOLD and GO LIVE and must never be tabifiable or closable");
 
 /* ─────────────────────────────────────────────────────────────────────────────────────────────
  * THE SAFETY RULE, AS A MECHANISM RATHER THAN AS A PROMISE.
@@ -486,18 +549,12 @@ QWidget *MakeRigDockContent(QDockWidget *dock, const RigDock &spec)
 	const QString pane = QString::fromUtf8(spec.pane);
 	QWidget *content = nullptr;
 
-	if (pane == QLatin1String("QCiRigControlPane")) {
-		content = new QCiRigControlPane(dock);
-	} else if (pane == QLatin1String("QCiRigQueuePane")) {
-		content = new QCiRigQueuePane(dock);
-	} else if (pane == QLatin1String("QCiRigReactionsPane")) {
-		content = new QCiRigReactionsPane(dock);
-	} else if (pane == QLatin1String("QCiRigChatPane")) {
-		content = new QCiRigChatPane(dock);
-	} else if (pane == QLatin1String("QCiRigTankPane")) {
-		content = new QCiRigTankPane(dock);
-	} else if (pane == QLatin1String("QCiRigAudioPane")) {
-		content = new QCiRigAudioPane(dock);
+	if (pane == QLatin1String("QCiOperatorPane")) {
+		content = new QCiOperatorPane(dock);
+	} else if (pane == QLatin1String("QCiSceneRail")) {
+		content = new QCiSceneRail(dock);
+	} else if (pane == QLatin1String("QCiAudioStrip")) {
+		content = new QCiAudioStrip(dock);
 	}
 
 	if (!content) {
@@ -646,33 +703,69 @@ void ApplyDefaultLayout(OBSBasic *main)
 		}
 	}
 
-	/* Pass 5 — a column wide enough to read a queue in, capped so it cannot eat the preview. */
-	QList<QDockWidget *> rightColumn;
-	for (int i = 0; i < RIG_DOCK_COUNT; i++) {
-		if (found[i] && RIG_DOCKS[i].area == Qt::RightDockWidgetArea && RIG_DOCKS[i].visibleByDefault) {
-			rightColumn.append(found[i]);
+	/* Pass 5 — the reference-window proportions, per side.
+	 *
+	 * The RIGHT column is the operator section: clamp(w*22%, 380, 460), which is 422 at 1920 — wide
+	 * enough for a moderation card's donor name and dollar figure on one line, capped so it cannot
+	 * eat the program monitor. The LEFT column is the scene rail: clamp(w*14%, 200, 260), narrower
+	 * because a scene label is one line of large type and nothing else.
+	 *
+	 * ⚠️ TWO CALLS, NOT ONE LIST. resizeDocks() distributes the sizes it is given across ONE
+	 * orientation's docks as a group; handing it the left and right columns together lets Qt satisfy
+	 * the total by shrinking whichever one it likes. */
+	auto sizeColumn = [&](Qt::DockWidgetArea area, int pct, int lo, int hi) {
+		QList<QDockWidget *> column;
+		for (int i = 0; i < RIG_DOCK_COUNT; i++) {
+			if (found[i] && RIG_DOCKS[i].area == area && RIG_DOCKS[i].visibleByDefault) {
+				column.append(found[i]);
+			}
 		}
-	}
-	if (!rightColumn.isEmpty()) {
-		const int width = std::min(main->width() * 30 / 100, 440);
+		if (column.isEmpty()) {
+			return;
+		}
+		const int width = std::clamp(main->width() * pct / 100, lo, hi);
 		QList<int> widths;
-		for (int i = 0; i < rightColumn.size(); i++) {
+		for (int i = 0; i < column.size(); i++) {
 			widths.append(width);
 		}
-		main->resizeDocks(rightColumn, widths, Qt::Horizontal);
+		main->resizeDocks(column, widths, Qt::Horizontal);
+	};
+	sizeColumn(Qt::RightDockWidgetArea, 22, 380, 460);
+	sizeColumn(Qt::LeftDockWidgetArea, 14, 200, 260);
+
+	/* The bottom band is sized by content — one 34px row per channel plus a 26px header — and is
+	   clamped so a rig with twelve inputs cannot take half the window. */
+	QList<QDockWidget *> bottomRow;
+	for (int i = 0; i < RIG_DOCK_COUNT; i++) {
+		if (found[i] && RIG_DOCKS[i].area == Qt::BottomDockWidgetArea && RIG_DOCKS[i].visibleByDefault) {
+			bottomRow.append(found[i]);
+		}
+	}
+	QList<int> bottomHeights;
+	for (int i = 0; i < RIG_DOCK_COUNT; i++) {
+		if (found[i] && RIG_DOCKS[i].area == Qt::BottomDockWidgetArea && RIG_DOCKS[i].visibleByDefault) {
+			/* The table's own height, so the number is beside the row it belongs to rather than
+			   typed a second time here. */
+			bottomHeights.append(RIG_DOCK_SIZES[i].height());
+		}
+	}
+	if (!bottomRow.isEmpty()) {
+		main->resizeDocks(bottomRow, bottomHeights, Qt::Vertical);
 	}
 
-	config_set_bool(App()->GetUserConfig(), CFG_SECTION, CFG_DOCKS_PLACED, true);
+	config_set_int(App()->GetUserConfig(), CFG_SECTION, CFG_DOCK_LAYOUT_REV, RIG_DOCK_LAYOUT_REV);
 	config_save_safe(App()->GetUserConfig(), "tmp", nullptr);
 }
 
 void ApplyDefaultLayoutIfNeeded(OBSBasic *main)
 {
-	/* Qt's restoreState() has nothing to say about a dock that did not exist when the state was
-	   written: it leaves it wherever addDockWidget() put it, untabified and unsized. That is the
-	   operator's OWN profile on the first run after this ships — six stacked strips in the right
-	   column — so the default layout is applied once, keyed off the profile, and never again. */
-	if (config_get_bool(App()->GetUserConfig(), CFG_SECTION, CFG_DOCKS_PLACED)) {
+	/* Qt's restoreState() has nothing to say about a dock whose objectName did not exist when the
+	   state was written: it leaves it wherever addDockWidget() put it, untabified and unsized. So the
+	   default layout is applied once per LAYOUT REVISION rather than once per profile — see the note
+	   on RIG_DOCK_LAYOUT_REV. The old once-per-profile boolean was already true on this machine when
+	   six docks became three, which is precisely how the scene rail came up as a stub in the corner
+	   with the right content in it and nothing to say it was misplaced. */
+	if (config_get_int(App()->GetUserConfig(), CFG_SECTION, CFG_DOCK_LAYOUT_REV) >= RIG_DOCK_LAYOUT_REV) {
 		return;
 	}
 	ApplyDefaultLayout(main);

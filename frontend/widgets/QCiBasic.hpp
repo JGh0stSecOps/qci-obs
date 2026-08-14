@@ -59,7 +59,6 @@ class OBSMissingFiles;
 class OBSProjector;
 class VolumeControl;
 #ifdef YOUTUBE_ENABLED
-class YouTubeAppDock;
 #endif
 class QMessageBox;
 class QWidgetAction;
@@ -86,6 +85,23 @@ enum class ItemPasteType { Invalid, Reference, Duplicate, Both };
 #define SIMPLE_ENCODER_APPLE_HEVC "apple_hevc"
 
 #define PREVIEW_EDGE_SIZE 10
+
+/* ── DOCK LAYOUT SCHEMA VERSION ─────────────────────────────────────────────────────────────────
+ *
+ * Passed to BOTH QMainWindow::saveState(int) and restoreState(QByteArray, int). Qt compares the
+ * number and refuses a mismatch by returning false, which is how a layout written by an older build
+ * gets ignored instead of faithfully reproducing itself.
+ *
+ * 0 (upstream, implicit) — six builtin docks side by side, each paying for its own title bar.
+ * 1 — the fork's tabified layout: Scenes+Sources share a side pane, Mixer+Transitions+Stats share a
+ *     bottom pane, Controls stays alone because it holds Go Live.
+ *
+ * Bump this ONLY when an existing saved layout would be actively wrong under the new arrangement —
+ * every bump discards the operator's hand-tuned layout. On the bump from 0 to 1, the old value is
+ * preserved to BasicWindow/DockState.v0 first (see OBSBasic::OBSInit) so rolling back is an edit to
+ * user.ini rather than an afternoon of re-dragging.
+ */
+#define QCI_DOCK_STATE_VERSION 1
 
 enum class ProjectorType;
 
@@ -209,9 +225,6 @@ class OBSBasic : public OBSMainWindow {
 	friend class OBSBasicSourceSelect;
 	friend class OBSBasicSettings;
 	friend class Auth;
-	friend class AutoConfig;
-	friend class AutoConfigStreamPage;
-	friend class ExtraBrowsersModel;
 	friend class OBSYoutubeActions;
 	friend struct BasicOutputHandler;
 	friend struct OBSStudioAPI;
@@ -258,8 +271,6 @@ private:
 
 	ConfigFile activeConfiguration;
 
-	QScopedPointer<QThread> patronJsonThread;
-	std::string patronJson;
 
 	std::unique_ptr<Ui::OBSBasic> ui;
 
@@ -288,7 +299,6 @@ private:
 
 public slots:
 	void close();
-	void UpdatePatronJson(const std::string &text, const std::string &error);
 	void UpdateEditMenu();
 	void applicationShutdown() noexcept;
 	void toggleMixerLayout();
@@ -352,20 +362,22 @@ public:
 	 * -------------------------------------
 	 */
 private:
-	QPointer<QWidget> extraBrowsers;
-
 #ifdef BROWSER_AVAILABLE
+	/* WHAT SURVIVED THE DELETION OF THE CUSTOM BROWSER DOCKS, and why these two and nothing else.
+	 *
+	 * There is no longer any way to CREATE one — the dialog, the model, the loader, the saver and
+	 * AddExtraBrowserDock() are all gone (see QCiBasic_Browser.cpp). What remains is the list they
+	 * populated and the menu separator that marked where they were filed, both still read by the
+	 * dock-layout code in QCiBasic_Docks.cpp: the reset-docklist sweep, the lock-docks feature
+	 * sweep, and AddDockWidget()'s `extraBrowser` placement. The list is now permanently empty, so
+	 * those loops iterate nothing — which is correct behaviour, not a leftover, and is cheaper and
+	 * safer than unpicking three unrelated layout paths in the same commit as a feature deletion.
+	 *
+	 * The two QStringLists that held each dock's title and URL are gone with the docks: nothing
+	 * can add to them and nothing read them except the saver. */
 	QPointer<QAction> extraBrowserMenuDocksSeparator;
 
 	QList<std::shared_ptr<QDockWidget>> extraBrowserDocks;
-	QStringList extraBrowserDockNames;
-	QStringList extraBrowserDockTargets;
-
-	void ClearExtraBrowserDocks();
-	void LoadExtraBrowserDocks();
-	void SaveExtraBrowserDocks();
-	void ManageExtraBrowserDocks();
-	void AddExtraBrowserDock(const QString &title, const QString &url, const QString &uuid, bool firstCreate);
 #endif
 
 public:
@@ -440,6 +452,37 @@ public slots:
 	 * MARK: - OBSBasic_Docks
 	 * -------------------------------------
 	 */
+public:
+	/* ── THE BUILTIN DOCKS, AS ONE LIST ─────────────────────────────────────────────────────
+	 *
+	 * The six docks this window owns used to be spelled out by hand in four places
+	 * (OBSInit's SETUP_DOCK block, on_resetDocks_triggered, on_lockDocks_toggled and
+	 * IsDockObjectNameUsed). Four hand-written copies of one list is four chances to add a
+	 * seventh dock and have it silently miss the Docks menu, or the lock, or the name-clash
+	 * check — and the last of those is not cosmetic: a dock whose name is not in
+	 * IsDockObjectNameUsed can be shadowed by a plugin dock, and two docks sharing an
+	 * objectName FUSE under saveState/restoreState (see QCiRigDocks.cpp's Load()).
+	 *
+	 * BuiltinDockId is the single list. Adding an enumerator without adding its table row
+	 * fails a static_assert, and without adding its case fails -Wswitch — both are hard
+	 * errors here, see the note on the table in QCiBasic_Docks.cpp. Deliberately NO
+	 * BUILTIN_DOCK_COUNT enumerator: a count member is itself a value of the enum, so a
+	 * default-less switch would have to handle it and the -Wswitch gate would be spent
+	 * satisfying its own sentinel. The count comes from the last real enumerator instead.
+	 */
+	enum BuiltinDockId {
+		BUILTIN_SCENES,
+		BUILTIN_SOURCES,
+		BUILTIN_MIXER,
+		BUILTIN_TRANSITIONS,
+		BUILTIN_CONTROLS,
+		BUILTIN_STATS,
+	};
+
+	/* The widget behind an id. Defined with a default-less switch so a new id cannot compile
+	 * until it is resolved here. Returns nullptr only if the dock has not been built yet. */
+	QDockWidget *BuiltinDock(BuiltinDockId id) const;
+
 private:
 	QPointer<QDockWidget> statsDock;
 	QByteArray startingDockLayout;
@@ -449,8 +492,13 @@ private:
 	QStringList extraCustomDockNames;
 	QList<QPointer<QDockWidget>> extraCustomDocks;
 
+	/* NOTE: there is no mixerDock member. There used to be one here, declared and never once
+	 * assigned or read — the real mixer dock is ui->mixerDock, built by the .ui file
+	 * (frontend/forms/QCiBasic.ui). A null QPointer sitting next to a live one is a trap: it
+	 * reads as "the mixer dock is reachable from C++ like controlsDock is", and any code that
+	 * believed that would have silently no-opped on a null. controlsDock IS real — it is
+	 * constructed in OBSInit — which is exactly why the dead sibling was so easy to miss. */
 	QPointer<OBSDock> controlsDock;
-	QPointer<OBSDock> mixerDock;
 
 public:
 	void AddDockWidget(QDockWidget *dock, Qt::DockWidgetArea area, bool extraBrowser = false);
@@ -580,7 +628,9 @@ private:
 	QPointer<OBSAbout> about;
 	QPointer<OBSBasicSourceSelect> addWindow;
 	QPointer<OBSLogViewer> logView;
-	QPointer<QWidget> stats;
+	/* No `stats` member: Stats is statsDock, and only statsDock. The independent top-level window
+	 * that used to live here ran a second 2s timer and a second CPU-usage handle against the same
+	 * encoder, and the Reset-Stats hotkey could not reach it. See on_stats_triggered(). */
 	QPointer<QWidget> remux;
 	QPointer<QWidget> importer;
 	QPointer<QAction> showHide;
@@ -620,23 +670,13 @@ private slots:
 	void on_action_Settings_triggered();
 	void on_actionShowMacPermissions_triggered();
 	void on_actionShowLogs_triggered();
-	void on_actionUploadCurrentLog_triggered();
-	void on_actionUploadLastLog_triggered();
 	void on_actionViewCurrentLog_triggered();
-	void on_actionCheckForUpdates_triggered();
-	void on_actionRepair_triggered();
-	void on_actionShowWhatsNew_triggered();
 	void on_actionRestartSafe_triggered();
 
 	void on_actionShowCrashLogs_triggered();
-	void on_actionUploadLastCrashLog_triggered();
 
 	void on_OBSBasic_customContextMenuRequested(const QPoint &pos);
 
-	void on_actionHelpPortal_triggered();
-	void on_actionWebsite_triggered();
-	void on_actionDiscord_triggered();
-	void on_actionReleaseNotes_triggered();
 
 	void on_actionShowSettingsFolder_triggered();
 	void on_actionShowProfileFolder_triggered();
@@ -646,7 +686,6 @@ private slots:
 	void on_toggleListboxToolbars_toggled(bool visible);
 	void on_toggleStatusBar_toggled(bool visible);
 
-	void on_autoConfigure_triggered();
 	void on_stats_triggered();
 	void on_idianPlayground_triggered();
 
@@ -655,7 +694,6 @@ private slots:
 	void logUploadFinished(const std::string &text, const std::string &error, OBS::LogFileType uploadType);
 
 public slots:
-	void updateCheckFinished();
 	void on_actionAdvAudioProperties_triggered();
 
 public:
@@ -689,7 +727,6 @@ private:
 	{
 		if (ui->profileMenu->isEnabled() || force) {
 			ui->profileMenu->setEnabled(false);
-			ui->autoConfigure->setEnabled(false);
 			App()->IncrementSleepInhibition();
 			UpdateProcessPriority();
 
@@ -715,7 +752,6 @@ private:
 	{
 		if (!outputHandler->Active() && !ui->profileMenu->isEnabled()) {
 			ui->profileMenu->setEnabled(true);
-			ui->autoConfigure->setEnabled(true);
 			App()->DecrementSleepInhibition();
 			ClearProcessPriority();
 
@@ -945,10 +981,7 @@ public slots:
 private:
 	std::vector<OBSProjector *> projectors;
 	QPointer<QMenu> previewProjector;
-	QPointer<QMenu> previewProjectorSource;
-	QPointer<QMenu> previewProjectorMain;
 
-	void updateMultiviewProjectorMenu();
 	void ClearProjectors();
 	OBSProjector *OpenProjector(obs_source_t *source, int monitor, ProjectorType type);
 
@@ -959,14 +992,8 @@ private slots:
 	void OpenSavedProjector(SavedProjectorInfo *info);
 
 	void OpenPreviewProjector();
-	void OpenSourceProjector();
-	void OpenMultiviewProjector();
-	void OpenSceneProjector();
 
 	void OpenPreviewWindow();
-	void OpenSourceWindow();
-	void OpenSceneWindow();
-	void openMultiviewWindow();
 
 public:
 	void DeleteProjector(OBSProjector *projector);
@@ -1159,7 +1186,6 @@ public slots:
 	 * -------------------------------------
 	 */
 private:
-	QPointer<QMenu> sourceProjector;
 	QPointer<QAction> renameSource;
 
 	void CreateFirstRunSources();
@@ -1254,7 +1280,6 @@ public:
 	 * -------------------------------------
 	 */
 private:
-	QPointer<QMenu> sceneProjectorMenu;
 	QPointer<QAction> renameScene;
 	std::atomic<obs_scene_t *> currentScene = nullptr;
 	OBSWeakSource lastScene;
@@ -1605,16 +1630,8 @@ public:
 	 * -------------------------------------
 	 */
 private:
-	QScopedPointer<QThread> whatsNewInitThread;
-	QScopedPointer<QThread> updateCheckThread;
-	QScopedPointer<QThread> introCheckThread;
-
-	void TimedCheckForUpdates();
-	void CheckForUpdates(bool manualUpdate);
-
-	void MacBranchesFetched(const QString &branch, bool manualUpdate);
-	void ReceivedIntroJson(const std::string &text);
-	void ShowWhatsNew(const QString &url);
+	/* No-ops in this fork; see widgets/QCiBasic_Updater.cpp for why the update and What's New
+	 * feeds were removed rather than disabled. */
 
 	/* -------------------------------------
 	 * MARK: - OBSBasic_VirtualCam
@@ -1666,8 +1683,6 @@ private:
 	QPointer<QThread> youtubeStreamCheckThread;
 
 #ifdef YOUTUBE_ENABLED
-	QPointer<YouTubeAppDock> youtubeAppDock;
-	uint64_t lastYouTubeAppDockCreationTime = 0;
 
 	void YoutubeStreamCheck(const std::string &key);
 	void ShowYouTubeAutoStartWarning();
@@ -1680,9 +1695,6 @@ private:
 
 public:
 #ifdef YOUTUBE_ENABLED
-	void NewYouTubeAppDock();
-	void DeleteYouTubeAppDock();
-	YouTubeAppDock *GetYouTubeAppDock();
 #endif
 
 public slots:

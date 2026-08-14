@@ -7,8 +7,9 @@
 
 #include "rtmp-format-ver.h"
 
-#include "service-specific/showroom.h"
-#include "service-specific/dacast.h"
+/* QCi: service-specific/ is deleted. Twitch / Amazon IVS / Dacast / Nimo TV / SHOWROOM
+ * ingest resolution is gone along with the services themselves; data/services.json now
+ * carries only Restream.io, whose ingest servers are plain static URLs in that file. */
 
 OBS_DECLARE_MODULE()
 OBS_MODULE_USE_DEFAULT_LOCALE("rtmp-services", "en-US")
@@ -28,11 +29,9 @@ extern struct obs_service_info rtmp_custom_service;
 static update_info_t *update_info = NULL;
 static struct dstr module_name = {0};
 
-const char *get_module_name(void)
-{
-	return module_name.array;
-}
+/* QCi: get_module_name() removed -- its only caller was service-specific/dacast.c. */
 
+#if defined(ENABLE_SERVICE_UPDATES)
 static bool confirm_service_file(void *param, struct file_download_data *file)
 {
 	if (astrcmpi(file->name, "services.json") == 0) {
@@ -53,58 +52,23 @@ static bool confirm_service_file(void *param, struct file_download_data *file)
 	UNUSED_PARAMETER(param);
 	return true;
 }
-
-extern void init_twitch_data(void);
-extern void load_twitch_data(void);
-extern void unload_twitch_data(void);
-extern void twitch_ingests_refresh(int seconds);
-
-extern void init_amazon_ivs_data(void);
-extern void load_amazon_ivs_data(void);
-extern void unload_amazon_ivs_data(void);
-extern void amazon_ivs_ingests_refresh(int seconds);
-
-static void refresh_callback(void *unused, calldata_t *cd)
-{
-	int seconds = (int)calldata_int(cd, "seconds");
-	if (seconds <= 0)
-		seconds = 3;
-	if (seconds > 10)
-		seconds = 10;
-
-	twitch_ingests_refresh(seconds);
-
-	UNUSED_PARAMETER(unused);
-}
-
-static void amazon_ivs_refresh_callback(void *unused, calldata_t *cd)
-{
-	int seconds = (int)calldata_int(cd, "seconds");
-	if (seconds <= 0)
-		seconds = 3;
-	if (seconds > 10)
-		seconds = 10;
-
-	amazon_ivs_ingests_refresh(seconds);
-
-	UNUSED_PARAMETER(unused);
-}
+#endif
 
 bool obs_module_load(void)
 {
-	init_twitch_data();
-	init_dacast_data();
-	init_amazon_ivs_data();
-
 	dstr_copy(&module_name, "rtmp-services plugin (libobs ");
 	dstr_cat(&module_name, obs_get_version_string());
 	dstr_cat(&module_name, ")");
 
-	proc_handler_t *ph = obs_get_proc_handler();
-	proc_handler_add(ph, "void twitch_ingests_refresh(int seconds)", refresh_callback, NULL);
-	proc_handler_add(ph, "void amazon_ivs_ingests_refresh(int seconds)", amazon_ivs_refresh_callback, NULL);
+	/* QCi: the "twitch_ingests_refresh" / "amazon_ivs_ingests_refresh" procs are no longer
+	 * registered. The autoconfig wizard still calls them by name; proc_handler_call()
+	 * returns false for an unknown proc, so those calls are simply no-ops now. */
 
 #if defined(ENABLE_SERVICE_UPDATES)
+	/* QCi: OFF by default -- see the comment on ENABLE_SERVICE_UPDATES in CMakeLists.txt.
+	 * This block is the only thing in this plugin that reaches the network, and leaving it
+	 * enabled would re-download the full obsproject.com services list over the
+	 * Restream-only data/services.json. */
 	char *local_dir = obs_module_file("");
 	char *cache_dir = obs_module_config_path("");
 	char update_url[128];
@@ -114,9 +78,6 @@ bool obs_module_load(void)
 		update_info = update_info_create(RTMP_SERVICES_LOG_STR, module_name.array, update_url, local_dir,
 						 cache_dir, confirm_service_file, NULL);
 	}
-
-	load_twitch_data();
-	load_amazon_ivs_data();
 
 	bfree(local_dir);
 	bfree(cache_dir);
@@ -130,9 +91,5 @@ bool obs_module_load(void)
 void obs_module_unload(void)
 {
 	update_info_destroy(update_info);
-	unload_twitch_data();
-	free_showroom_data();
-	unload_dacast_data();
-	unload_amazon_ivs_data();
 	dstr_free(&module_name);
 }

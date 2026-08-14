@@ -12,6 +12,12 @@
 !/plugins
 !/shared
 !/test
+# QCi: fork-only operator scripts (tools/install-qci-plugins.command). This .gitignore excludes
+# the repo root wholesale with `/*` and re-admits an allowlist, so a new top-level directory is
+# invisible to git rather than merely untracked — `git status` does not mention it and `git add .`
+# skips it. Without this line the plugin installer would be a file that exists on one machine and
+# in no commit, which is exactly how a working script gets lost.
+!/tools
 !.cirrus.xml
 !.clang-format
 !.editorconfig
@@ -49,3 +55,9 @@ build-aux/flatpak-github-action-modified-*
 
 # Exclude CMake build number cache
 /cmake/.CMakeBuildNumber
+
+# QCi: exclude Python bytecode caches. build-aux/check-branding.py is run by ctest (the qci-branding
+# test), so any tree where the suite has been run once grows a build-aux/__pycache__/ that is pure
+# build output. Upstream never needed this because upstream shipped no tests to run.
+__pycache__/
+*.py[cod]

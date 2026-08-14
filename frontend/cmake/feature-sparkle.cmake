@@ -9,36 +9,24 @@
 # control over this machine's app.
 #
 # SPARKLE_APPCAST_URL and SPARKLE_PUBLIC_KEY are therefore empty in CMakePresets.json (JSON has
-# no comments, hence this note here). Empty is falsy in CMake, so the else() branch below is the
-# live path: no Sparkle framework, no updater sources, no SU* keys in Info.plist. Do not restore
-# them unless QCi-Studio grows its own appcast signed with its own key.
-if(SPARKLE_APPCAST_URL AND SPARKLE_PUBLIC_KEY)
-  find_library(SPARKLE Sparkle)
-  mark_as_advanced(SPARKLE)
-  target_sources(
-    obs-studio
-    PRIVATE
-      utility/MacUpdateThread.cpp
-      utility/MacUpdateThread.hpp
-      utility/QCiSparkle.hpp
-      utility/QCiSparkle.mm
-      utility/QCiUpdateDelegate.h
-      utility/QCiUpdateDelegate.mm
+# no comments, hence this note here).
+#
+# The updater sources themselves are now GONE, not merely disabled. MacUpdateThread, QCiSparkle,
+# QCiUpdateDelegate and the branch-list machinery were deleted along with the What's New feed they
+# shared (MacUpdateThread called FetchAndVerifyFile, which lived in WhatsNewInfoThread.cpp). This
+# is a personal build that is installed by copying a bundle; it has no appcast to check and no
+# business phoning home.
+#
+# Setting the two cache variables can therefore no longer produce a working updater, so it is a
+# hard error rather than a silently half-configured build. Restoring Sparkle means restoring those
+# sources from git history AND minting this fork's own appcast and signing key — never upstream's.
+if(SPARKLE_APPCAST_URL OR SPARKLE_PUBLIC_KEY)
+  message(
+    FATAL_ERROR
+      "SPARKLE_APPCAST_URL / SPARKLE_PUBLIC_KEY are set, but this fork's Sparkle updater sources "
+      "were removed. Clear both variables, or restore the updater from git history together with "
+      "an appcast and EdDSA key belonging to QCi-Studio — never upstream OBS's."
   )
-  set_source_files_properties(utility/QCiSparkle.mm PROPERTIES COMPILE_OPTIONS -fobjc-arc)
-
-  target_link_libraries(obs-studio PRIVATE "$<LINK_LIBRARY:FRAMEWORK,${SPARKLE}>")
-
-  if(OBS_BETA GREATER 0 OR OBS_RELEASE_CANDIDATE GREATER 0)
-    set(SPARKLE_UPDATE_INTERVAL 3600) # 1 hour
-  else()
-    set(SPARKLE_UPDATE_INTERVAL 86400) # 24 hours
-  endif()
-
-  target_enable_feature(obs-studio "Sparkle updater" ENABLE_SPARKLE_UPDATER)
-
-  include(cmake/feature-macos-update.cmake)
-else()
-  set(SPARKLE_UPDATE_INTERVAL 0) # Set anything that's not an empty integer
-  target_disable_feature(obs-studio "Sparkle updater")
 endif()
+
+target_disable_feature(obs-studio "Sparkle updater")

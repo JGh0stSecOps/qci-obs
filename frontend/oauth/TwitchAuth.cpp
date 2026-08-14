@@ -2,6 +2,7 @@
 
 #include <dialogs/OAuthLogin.hpp>
 #include <docks/BrowserDock.hpp>
+#include <docks/QCiRigDocks.hpp>
 #include <utility/RemoteTextThread.hpp>
 #include <utility/obf.h>
 #include <widgets/QCiBasic.hpp>
@@ -291,6 +292,18 @@ void TwitchAuth::LoadUI()
 		const char *dockStateStr = config_get_string(main->Config(), service(), "DockState");
 		QByteArray dockState = QByteArray::fromBase64(QByteArray(dockStateStr));
 		main->restoreState(dockState);
+
+		/* THE CONTRACT IN docks/QCiRigDocks.hpp, HONOURED HERE AND AT EVERY OTHER restoreState()
+		 * IN THIS FILE AND IN THE SIBLING SERVICES. This per-service blob is a FULL
+		 * main->saveState() (SaveInternal() above), so it carries the rig's own docks too —
+		 * including a PRIVACY HOLD that a previous session left hidden or dragged into a tab group.
+		 * And it lands LATE: OBSBasic::OBSInit() calls EnsureUndismissableVisible() exactly once,
+		 * ~100 lines before OnFirstLoad() -> Auth::Load() -> LoadUI() reaches this line, so without
+		 * the re-arm below a linked account silently undoes that guard on every launch. Nothing
+		 * else would put the panic control back: its toggle action and close button are both
+		 * deliberately removed, and shutdown re-saves the bad layout into this blob AND the global
+		 * one, so it never self-heals. Idempotent and cheap, so it is unconditional. */
+		QCiRigDocks::EnsureUndismissableVisible(main);
 	}
 
 	TryLoadSecondaryUIPanes();
@@ -417,6 +430,11 @@ void TwitchAuth::LoadSecondaryUIPanes()
 
 		if (main->isVisible() || !main->isMaximized()) {
 			main->restoreState(dockState);
+
+			/* Same blob, same contract, same reason — see LoadUI() above. Inside the `if`
+			 * rather than after it, because the guard belongs to the restore, not to the
+			 * function: no restoreState(), nothing to re-arm. */
+			QCiRigDocks::EnsureUndismissableVisible(main);
 		}
 	}
 }

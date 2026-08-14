@@ -41,6 +41,4 @@ target_sources(
     dialogs/QCiMissingFiles.hpp
     dialogs/QCiRemux.cpp
     dialogs/QCiRemux.hpp
-    dialogs/QCiWhatsNew.cpp
-    dialogs/QCiWhatsNew.hpp
 )

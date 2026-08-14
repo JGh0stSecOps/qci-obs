@@ -32,18 +32,8 @@ obs_data_array_t *OBSBasic::SaveProjectors()
 		OBSDataAutoRelease data = obs_data_create();
 		ProjectorType type = projector->GetProjectorType();
 
-		switch (type) {
-		case ProjectorType::Scene:
-		case ProjectorType::Source: {
-			OBSSource source = projector->GetSource();
-			const char *name = obs_source_get_name(source);
-			obs_data_set_string(data, "name", name);
-			break;
-		}
-		default:
-			break;
-		}
-
+		/* No "name" key any more: only the scene and source projectors ever needed one, because
+		 * only they projected a named source. The program projector renders the output. */
 		obs_data_set_int(data, "monitor", projector->GetMonitor());
 		obs_data_set_int(data, "type", static_cast<int>(type));
 		obs_data_set_string(data, "geometry", projector->saveGeometry().toBase64().constData());
@@ -81,14 +71,6 @@ void OBSBasic::LoadSavedProjectors(obs_data_array_t *array)
 
 		OpenSavedProjector(&info);
 	}
-}
-
-void OBSBasic::updateMultiviewProjectorMenu()
-{
-	ui->multiviewProjectorMenu->clear();
-	AddProjectorMenuMonitors(ui->multiviewProjectorMenu, this, &OBSBasic::OpenMultiviewProjector);
-	ui->multiviewProjectorMenu->addSeparator();
-	ui->multiviewProjectorMenu->addAction(QTStr("Projector.Window"), this, &OBSBasic::openMultiviewWindow);
 }
 
 void OBSBasic::ClearProjectors()
@@ -176,86 +158,31 @@ OBSProjector *OBSBasic::OpenProjector(obs_source_t *source, int monitor, Project
 void OBSBasic::OpenPreviewProjector()
 {
 	int monitor = sender()->property("monitor").toInt();
-	OpenProjector(nullptr, monitor, ProjectorType::Preview);
-}
-
-void OBSBasic::OpenSourceProjector()
-{
-	int monitor = sender()->property("monitor").toInt();
-	OBSSceneItem item = GetCurrentSceneItem();
-	if (!item) {
-		return;
-	}
-
-	OpenProjector(obs_sceneitem_get_source(item), monitor, ProjectorType::Source);
-}
-
-void OBSBasic::OpenMultiviewProjector()
-{
-	int monitor = sender()->property("monitor").toInt();
-	OpenProjector(nullptr, monitor, ProjectorType::Multiview);
-}
-
-void OBSBasic::OpenSceneProjector()
-{
-	int monitor = sender()->property("monitor").toInt();
-	OBSScene scene = GetCurrentScene();
-	if (!scene) {
-		return;
-	}
-
-	OpenProjector(obs_scene_get_source(scene), monitor, ProjectorType::Scene);
+	OpenProjector(nullptr, monitor, ProjectorType::Program);
 }
 
 void OBSBasic::OpenPreviewWindow()
 {
-	OpenProjector(nullptr, -1, ProjectorType::Preview);
-}
-
-void OBSBasic::OpenSourceWindow()
-{
-	OBSSceneItem item = GetCurrentSceneItem();
-	if (!item) {
-		return;
-	}
-
-	OBSSource source = obs_sceneitem_get_source(item);
-
-	OpenProjector(obs_sceneitem_get_source(item), -1, ProjectorType::Source);
-}
-
-void OBSBasic::OpenSceneWindow()
-{
-	OBSScene scene = GetCurrentScene();
-	if (!scene) {
-		return;
-	}
-
-	OBSSource source = obs_scene_get_source(scene);
-
-	OpenProjector(obs_scene_get_source(scene), -1, ProjectorType::Scene);
+	OpenProjector(nullptr, -1, ProjectorType::Program);
 }
 
 void OBSBasic::OpenSavedProjector(SavedProjectorInfo *info)
 {
 	if (info) {
-		OBSProjector *projector = nullptr;
-		switch (info->type) {
-		case ProjectorType::Source:
-		case ProjectorType::Scene: {
-			OBSSourceAutoRelease source = obs_get_source_by_name(info->name.c_str());
-			if (!source) {
-				return;
-			}
+		/* A collection saved before the source/scene/multiview projectors were deleted can
+		 * still carry their type ints. Reopening one would put an unmasked source on a
+		 * display, which is the exact thing the deletion is for, so an unrecognised type is
+		 * DROPPED — not coerced to the program projector, which would silently open a window
+		 * the operator did not ask for. */
+		if (info->type != ProjectorType::Program) {
+			blog(LOG_INFO,
+			     "Ignoring saved projector of removed type %d — scene, source, multiview "
+			     "and studio-program projectors render outside the program composite",
+			     static_cast<int>(info->type));
+			return;
+		}
 
-			projector = OpenProjector(source, info->monitor, info->type);
-			break;
-		}
-		default: {
-			projector = OpenProjector(nullptr, info->monitor, info->type);
-			break;
-		}
-		}
+		OBSProjector *projector = OpenProjector(nullptr, info->monitor, info->type);
 
 		if (projector && !info->geometry.empty() && info->monitor < 0) {
 			QByteArray byteArray = QByteArray::fromBase64(QByteArray(info->geometry.c_str()));
@@ -274,7 +201,3 @@ void OBSBasic::OpenSavedProjector(SavedProjectorInfo *info)
 	}
 }
 
-void OBSBasic::openMultiviewWindow()
-{
-	OpenProjector(nullptr, -1, ProjectorType::Multiview);
-}

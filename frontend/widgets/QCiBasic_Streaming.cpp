@@ -21,7 +21,6 @@
 
 #include <components/UIValidation.hpp>
 #ifdef YOUTUBE_ENABLED
-#include <docks/YouTubeAppDock.hpp>
 #include <utility/YoutubeApiWrappers.hpp>
 #endif
 
@@ -268,12 +267,6 @@ void OBSBasic::StreamingStart()
 
 	OnActivate();
 
-#ifdef YOUTUBE_ENABLED
-	if (YouTubeAppDock::IsYTServiceSelected()) {
-		youtubeAppDock->IngestionStarted();
-	}
-#endif
-
 	blog(LOG_INFO, STREAMING_START);
 }
 
@@ -358,12 +351,6 @@ void OBSBasic::StreamingStop(int code, QString last_error)
 	OnEvent(OBS_FRONTEND_EVENT_STREAMING_STOPPED);
 
 	OnDeactivate();
-
-#ifdef YOUTUBE_ENABLED
-	if (YouTubeAppDock::IsYTServiceSelected()) {
-		youtubeAppDock->IngestionStopped();
-	}
-#endif
 
 	blog(LOG_INFO, STREAMING_STOP);
 

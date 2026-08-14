@@ -70,7 +70,6 @@ private:
 	int pageIndex = 0;
 	bool loading = true;
 	bool forceAuthReload = false;
-	bool forceUpdateCheck = false;
 	int sampleRateIndex = 0;
 	int channelIndex = 0;
 	bool llBufferingEnabled = false;
@@ -199,7 +198,6 @@ private:
 	/* general */
 	void LoadLanguageList();
 	void LoadThemeList(bool firstLoad);
-	void LoadBranchesList();
 
 	/* stream */
 	void InitStreamPage();
@@ -309,7 +307,6 @@ private:
 
 	bool AskIfCanCloseSettings();
 
-	void UpdateYouTubeAppDockSettings();
 
 	QIcon generalIcon;
 	QIcon appearanceIcon;

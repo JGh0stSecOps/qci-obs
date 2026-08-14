@@ -18,9 +18,7 @@
 #include "QCiBasic.hpp"
 
 #ifdef YOUTUBE_ENABLED
-#include <docks/YouTubeAppDock.hpp>
 #endif
-#include <wizards/AutoConfig.hpp>
 
 #include <qt-wrappers.hpp>
 #include <ui-config.h>
@@ -79,12 +77,11 @@ void OBSBasic::SetupNewProfile(const std::string &profileName, bool useWizard)
 	blog(LOG_INFO, "Created profile '%s' (clean, %s)", newProfile.name.c_str(), newProfile.directoryName.c_str());
 	blog(LOG_INFO, "------------------------------------------------");
 
-	if (useWizard) {
-		AutoConfig wizard(this);
-		wizard.setModal(true);
-		wizard.show();
-		wizard.exec();
-	}
+	/* `useWizard` is still written to Basic/ConfigOnNewProfile so the checkbox in the new-profile
+	 * dialog keeps its meaning for anything that reads the key, but there is no wizard to run:
+	 * see the note in cmake/ui-wizards.cmake. A new profile on this machine is a copy of a working
+	 * one, not a bandwidth test against upstream's service. */
+	UNUSED_PARAMETER(useWizard);
 }
 
 void OBSBasic::SetupDuplicateProfile(const std::string &profileName)
@@ -538,12 +535,6 @@ void OBSBasic::on_actionRemoveProfile_triggered(bool skipConfirmation)
 	ActivateProfile(newProfile, true);
 	RemoveProfile(currentProfile);
 
-#ifdef YOUTUBE_ENABLED
-	if (YouTubeAppDock::IsYTServiceSelected() && !youtubeAppDock) {
-		NewYouTubeAppDock();
-	}
-#endif
-
 	blog(LOG_INFO, "Switched to profile '%s' (%s)", newProfile.name.c_str(), newProfile.directoryName.c_str());
 	blog(LOG_INFO, "------------------------------------------------");
 }
@@ -680,11 +671,6 @@ void OBSBasic::ActivateProfile(const OBSProfile &profile, bool reset)
 		if (reset) {
 			auth.reset();
 			DestroyPanelCookieManager();
-#ifdef YOUTUBE_ENABLED
-			if (youtubeAppDock) {
-				DeleteYouTubeAppDock();
-			}
-#endif
 		}
 		restartRequirements = GetRestartRequirements(config);
 
@@ -711,12 +697,6 @@ void OBSBasic::ActivateProfile(const OBSProfile &profile, bool reset)
 	emit profileSettingChanged("Audio", "MeterDecayRate");
 
 	Auth::Load();
-#ifdef YOUTUBE_ENABLED
-	if (YouTubeAppDock::IsYTServiceSelected() && !youtubeAppDock) {
-		NewYouTubeAppDock();
-	}
-#endif
-
 	OnEvent(OBS_FRONTEND_EVENT_PROFILE_CHANGED);
 
 	if (!restartRequirements.empty()) {

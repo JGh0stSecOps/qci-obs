@@ -1,4 +1,6 @@
+<!-- QCi. =mix(c-rule, c-gnd, .40) for both the box and the tick: a disabled checked box keeps its
+     shape and loses its voice, rather than keeping its fill and looking live. -->
 <svg version="1.1" x="0" y="0" width="128" height="128" viewBox="0 0 128 128">
-<rect x="14" y="14" width="100" height="100" fill="none" stroke="#4A4A5A" stroke-width="8"/>
-<polyline points="34,66 55,88 96,40" fill="none" stroke="#4A4A5A" stroke-width="14" stroke-linecap="butt" stroke-linejoin="miter"/>
+<rect x="14" y="14" width="100" height="100" fill="none" stroke="#1F4E35" stroke-width="8"/>
+<polyline points="34,66 55,88 96,40" fill="none" stroke="#1F4E35" stroke-width="14" stroke-linecap="butt" stroke-linejoin="miter"/>
 </svg>

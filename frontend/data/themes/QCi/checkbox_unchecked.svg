@@ -1,3 +1,6 @@
+<!-- QCi. Square because control.html sets —rad to 0. Stroke =c-rule (rig): the component-border
+     step, 4.00:1 on the window and 3.82:1 on the field plate, which is the 3:1 non-text threshold
+     with room. -->
 <svg version="1.1" x="0" y="0" width="128" height="128" viewBox="0 0 128 128">
-<rect x="14" y="14" width="100" height="100" fill="none" stroke="#157A8A" stroke-width="8"/>
+<rect x="14" y="14" width="100" height="100" fill="none" stroke="#2F7D51" stroke-width="8"/>
 </svg>

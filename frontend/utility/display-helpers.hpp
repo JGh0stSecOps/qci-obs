@@ -24,6 +24,28 @@
 #include <QSize>
 #include <QWidget>
 
+/* MOVED HERE FROM components/Multiview.hpp, which is deleted.
+ *
+ * These two are not multiview helpers and never were — they push a viewport and an orthographic
+ * projection, which is what ANY display callback that draws into a sub-rectangle needs. They were
+ * declared at the bottom of the multiview header, below the Multiview class, and the projector
+ * reached them by including that header for this and nothing else. Deleting the multiview would
+ * therefore have taken the program projector's viewport setup with it, and the failure would have
+ * been a compile error in an unrelated file — which is how it was found. */
+static inline void startRegion(int vX, int vY, int vCX, int vCY, float oL, float oR, float oT, float oB)
+{
+	gs_projection_push();
+	gs_viewport_push();
+	gs_set_viewport(vX, vY, vCX, vCY);
+	gs_ortho(oL, oR, oT, oB, -100.0f, 100.0f);
+}
+
+static inline void endRegion()
+{
+	gs_viewport_pop();
+	gs_projection_pop();
+}
+
 static inline void GetScaleAndCenterPos(int baseCX, int baseCY, int windowCX, int windowCY, int &x, int &y,
 					float &scale)
 {

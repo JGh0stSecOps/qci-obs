@@ -1,8 +1,10 @@
 #include "YoutubeAuth.hpp"
 
 #ifdef BROWSER_AVAILABLE
-#include <docks/YouTubeChatDock.hpp>
 #endif
+/* Outside the BROWSER_AVAILABLE guard on purpose: the restoreState() this covers in LoadUI() is
+ * outside it too. */
+#include <docks/QCiRigDocks.hpp>
 #include <oauth/AuthListener.hpp>
 #include <utility/YoutubeApiWrappers.hpp>
 #include <utility/obf.h>
@@ -22,10 +24,7 @@
 #define YOUTUBE_API_STATE_LENGTH 32
 #define SECTION_NAME "YouTube"
 
-#define YOUTUBE_CHAT_PLACEHOLDER_URL "https://obsproject.com/placeholders/youtube-chat"
-#define YOUTUBE_CHAT_POPOUT_URL "https://www.youtube.com/live_chat?is_popout=1&dark_theme=1&v=%1"
 
-#define YOUTUBE_CHAT_DOCK_NAME "ytChat"
 
 static const char allowedChars[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 static const int allowedCount = static_cast<int>(sizeof(allowedChars) - 1);
@@ -62,12 +61,6 @@ YoutubeAuth::~YoutubeAuth()
 		return;
 	}
 
-#ifdef BROWSER_AVAILABLE
-	OBSBasic *main = OBSBasic::Get();
-
-	main->RemoveDockWidget(YOUTUBE_CHAT_DOCK_NAME);
-	chat = nullptr;
-#endif
 }
 
 bool YoutubeAuth::RetryLogin()
@@ -120,73 +113,41 @@ void YoutubeAuth::LoadUI()
 	OBSBasic::InitBrowserPanelSafeBlock();
 	OBSBasic *main = OBSBasic::Get();
 
-	QCefWidget *browser;
-
-	QSize size = main->frameSize();
-	QPoint pos = main->pos();
-
-	chat = new YoutubeChatDock(QTStr("Auth.Chat"));
-	chat->setObjectName(YOUTUBE_CHAT_DOCK_NAME);
-	chat->resize(300, 600);
-	chat->setMinimumSize(200, 300);
-	chat->setAllowedAreas(Qt::AllDockWidgetAreas);
-
-	browser = cef->create_widget(chat, YOUTUBE_CHAT_PLACEHOLDER_URL, panel_cookies);
-
-	chat->SetWidget(browser);
-	main->AddDockWidget(chat, Qt::RightDockWidgetArea);
-
-	chat->setFloating(true);
-	chat->move(pos.x() + size.width() - chat->width() - 50, pos.y() + 50);
-
-	if (firstLoad) {
-		chat->setVisible(true);
-	}
 #endif
-
-	if (!main->GetYouTubeAppDock()) {
-		main->NewYouTubeAppDock();
-	}
 
 	if (!firstLoad) {
 		const char *dockStateStr = config_get_string(main->Config(), service(), "DockState");
 		QByteArray dockState = QByteArray::fromBase64(QByteArray(dockStateStr));
 		main->restoreState(dockState);
+
+		/* The contract in docks/QCiRigDocks.hpp. SaveInternal() above stores a FULL
+		 * main->saveState(), so this blob has a vote on the rig's PRIVACY HOLD dock, and it is
+		 * cast AFTER OBSInit()'s one call to EnsureUndismissableVisible() — Auth::Load() runs from
+		 * OnFirstLoad(). Re-arm it here or a linked YouTube account can hide the panic control for
+		 * the whole session. Reasoning in full at TwitchAuth::LoadUI(). */
+		QCiRigDocks::EnsureUndismissableVisible(main);
 	}
 
 	uiLoaded = true;
 }
 
+/* THE YOUTUBE CHAT DOCK AND APP DOCK ARE DELETED, and these three methods are kept as no-ops
+ * because YoutubeApiWrappers and QCiYoutubeActions still call them at broadcast start/stop.
+ *
+ * Both were CEF docks embedding YouTube's own UI: a second chat scrollback in a second visual
+ * language, next to the operator panel's CHAT pane, whose URL is derived from OBS's own chat
+ * browser sources and therefore covers every platform rather than one. The placeholder page they
+ * pointed at while signed out was hosted on obsproject.com, so this fork was fetching upstream's
+ * page to say "no chat yet".
+ */
 void YoutubeAuth::SetChatId(const QString &chat_id)
 {
-#ifdef BROWSER_AVAILABLE
-	QString chat_url = QString(YOUTUBE_CHAT_POPOUT_URL).arg(chat_id);
-
-	if (chat && chat->cefWidget) {
-		chat->cefWidget->setURL(chat_url.toStdString());
-	}
-#else
 	UNUSED_PARAMETER(chat_id);
-#endif
 }
 
-void YoutubeAuth::ResetChat()
-{
-#ifdef BROWSER_AVAILABLE
-	if (chat && chat->cefWidget) {
-		chat->cefWidget->setURL(YOUTUBE_CHAT_PLACEHOLDER_URL);
-	}
-#endif
-}
+void YoutubeAuth::ResetChat() {}
 
-void YoutubeAuth::ReloadChat()
-{
-#ifdef BROWSER_AVAILABLE
-	if (chat && chat->cefWidget) {
-		chat->cefWidget->reloadPage();
-	}
-#endif
-}
+void YoutubeAuth::ReloadChat() {}
 
 QString YoutubeAuth::GenerateState()
 {

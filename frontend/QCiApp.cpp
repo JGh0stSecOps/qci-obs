@@ -17,15 +17,11 @@
 
 #include "QCiApp.hpp"
 
-#include <components/Multiview.hpp>
 #include <dialogs/LogUploadDialog.hpp>
 #include <plugin-manager/PluginManager.hpp>
 #include <utility/CrashHandler.hpp>
 #include <utility/QCiEventFilter.hpp>
 #include <utility/QCiProxyStyle.hpp>
-#if defined(_WIN32) || defined(ENABLE_SPARKLE_UPDATER)
-#include <utility/models/branches.hpp>
-#endif
 #include <widgets/QCiBasic.hpp>
 
 #if !defined(_WIN32) && !defined(__APPLE__)
@@ -39,9 +35,6 @@
 
 #include <QCheckBox>
 #include <QDesktopServices>
-#if defined(_WIN32) || defined(ENABLE_SPARKLE_UPDATER)
-#include <QFile>
-#endif
 
 #include <QSessionManager>
 #ifndef _WIN32
@@ -71,7 +64,6 @@ extern bool portable_mode;
 extern bool safe_mode;
 extern bool multi;
 extern bool disable_3p_plugins;
-extern bool opt_disable_updater;
 extern bool opt_disable_missing_files_check;
 extern string opt_starting_collection;
 extern string opt_starting_profile;
@@ -89,54 +81,36 @@ typedef struct UncleanLaunchAction {
 	bool sendCrashReport = false;
 } UncleanLaunchAction;
 
+/* ⚠️ THIS FORK NEVER ASKS. IT LOGS THE UNCLEAN SHUTDOWN AND LAUNCHES NORMALLY.
+ *
+ * Upstream stops here with a modal offering Safe Mode. On a general-purpose OBS install that is a
+ * reasonable question. On this rig it is a trap with two edges:
+ *
+ *   1. SAFE MODE DISABLES THIRD-PARTY PLUGINS, WHICH IS THE PRIVACY CHAIN. obs-shaderfilter and
+ *      obs-backgroundremoval are third-party here, and libobs does not refuse a filter whose module
+ *      is missing — it logs one line and builds a do-nothing PLACEHOLDER (obs-source.c:440-458).
+ *      So "Run in Safe Mode" means the Person Privacy Matte renders UNMASKED while still looking
+ *      filtered in the UI. That is one click, on a dialog whose text never mentions the camera,
+ *      after the kind of event (a crash) that already has the operator moving fast.
+ *
+ *   2. IT BLOCKS STARTUP ON A MODAL. The rig is started to go live; a window that waits for a
+ *      human before libobs has loaded anything is dead air, and it is not visible on the 7" panel
+ *      at all — the operator sees a studio that simply never comes up.
+ *
+ * Crash reporting is moot in this fork regardless: it does not upload (the updater and crash
+ * upload were removed with the rest of the phone-home path).
+ *
+ * The unclean shutdown is still LOGGED, loudly, because the fact is worth having in the log —
+ * it is only the question that is removed.
+ */
 UncleanLaunchAction handleUncleanShutdown(bool enableCrashUpload)
 {
+	UNUSED_PARAMETER(enableCrashUpload);
+
 	UncleanLaunchAction launchAction;
 
-	blog(LOG_WARNING, "Crash or unclean shutdown detected");
-
-	QMessageBox crashWarning;
-
-	crashWarning.setIcon(QMessageBox::Warning);
-#if QT_VERSION >= QT_VERSION_CHECK(6, 6, 0)
-	crashWarning.setOption(QMessageBox::Option::DontUseNativeDialog);
-#endif
-	crashWarning.setWindowTitle(QTStr("CrashHandling.Dialog.Title"));
-	crashWarning.setText(QTStr("CrashHandling.Labels.Text"));
-
-	if (enableCrashUpload) {
-		crashWarning.setInformativeText(QTStr("CrashHandling.Labels.PrivacyNotice"));
-
-		QCheckBox *sendCrashReportCheckbox = new QCheckBox(QTStr("CrashHandling.Checkbox.SendReport"));
-		crashWarning.setCheckBox(sendCrashReportCheckbox);
-	}
-
-	QPushButton *launchSafeButton =
-		crashWarning.addButton(QTStr("CrashHandling.Buttons.LaunchSafe"), QMessageBox::AcceptRole);
-	QPushButton *launchNormalButton =
-		crashWarning.addButton(QTStr("CrashHandling.Buttons.LaunchNormal"), QMessageBox::RejectRole);
-
-	crashWarning.setDefaultButton(launchNormalButton);
-
-	crashWarning.exec();
-
-	bool useSafeMode = crashWarning.clickedButton() == launchSafeButton;
-
-	if (useSafeMode) {
-		launchAction.useSafeMode = true;
-
-		blog(LOG_INFO, "[Safe Mode] Safe mode launch selected, loading third-party plugins is disabled");
-	} else {
-		blog(LOG_WARNING, "[Safe Mode] Normal launch selected, loading third-party plugins is enabled");
-	}
-
-	bool sendCrashReport = (enableCrashUpload) ? crashWarning.checkBox()->isChecked() : false;
-
-	if (sendCrashReport) {
-		launchAction.sendCrashReport = true;
-
-		blog(LOG_INFO, "User selected to send crash report");
-	}
+	blog(LOG_WARNING, "Crash or unclean shutdown detected — launching NORMALLY (safe mode is never "
+			  "offered in this fork: it would disable the third-party privacy filters)");
 
 	return launchAction;
 }
@@ -379,12 +353,6 @@ void OBSApp::InitUserConfigDefaults()
 
 	config_set_default_bool(userConfig, "BasicWindow", "VerticalVolumeControl", true);
 
-	config_set_default_bool(userConfig, "BasicWindow", "MultiviewMouseSwitch", true);
-
-	config_set_default_bool(userConfig, "BasicWindow", "MultiviewDrawNames", true);
-
-	config_set_default_bool(userConfig, "BasicWindow", "MultiviewDrawAreas", true);
-
 	config_set_default_bool(userConfig, "BasicWindow", "MediaControlsCountdownTimer", true);
 
 	config_set_default_bool(App()->GetUserConfig(), "BasicWindow", "MixerShowInactive", false);
@@ -393,7 +361,10 @@ void OBSApp::InitUserConfigDefaults()
 	config_set_default_bool(App()->GetUserConfig(), "BasicWindow", "MixerKeepHiddenLast", false);
 
 	config_set_default_int(userConfig, "Appearance", "FontScale", 10);
-	config_set_default_int(userConfig, "Appearance", "Density", 1);
+	/* OBS_DENSITY_DEFAULT, not a literal: this used to be `1`, which is not one of the four
+	 * ids getPaddingForDensityId() branches on and not one QButtonGroup can produce. See
+	 * utility/QCiTheme.hpp. */
+	config_set_default_int(userConfig, "Appearance", "Density", OBS_DENSITY_DEFAULT);
 }
 
 static bool do_mkdir(const char *path)
@@ -501,39 +472,6 @@ static bool MakeUserProfileDirs()
 	}
 
 	return true;
-}
-
-bool OBSApp::UpdatePre22MultiviewLayout(const char *layout)
-{
-	if (!layout) {
-		return false;
-	}
-
-	if (astrcmpi(layout, "horizontaltop") == 0) {
-		config_set_int(userConfig, "BasicWindow", "MultiviewLayout",
-			       static_cast<int>(MultiviewLayout::HORIZONTAL_TOP_8_SCENES));
-		return true;
-	}
-
-	if (astrcmpi(layout, "horizontalbottom") == 0) {
-		config_set_int(userConfig, "BasicWindow", "MultiviewLayout",
-			       static_cast<int>(MultiviewLayout::HORIZONTAL_BOTTOM_8_SCENES));
-		return true;
-	}
-
-	if (astrcmpi(layout, "verticalleft") == 0) {
-		config_set_int(userConfig, "BasicWindow", "MultiviewLayout",
-			       static_cast<int>(MultiviewLayout::VERTICAL_LEFT_8_SCENES));
-		return true;
-	}
-
-	if (astrcmpi(layout, "verticalright") == 0) {
-		config_set_int(userConfig, "BasicWindow", "MultiviewLayout",
-			       static_cast<int>(MultiviewLayout::VERTICAL_RIGHT_8_SCENES));
-		return true;
-	}
-
-	return false;
 }
 
 bool OBSApp::InitGlobalConfig()
@@ -647,14 +585,6 @@ void OBSApp::MigrateLegacySettings(const uint32_t lastVersion)
 
 			hasChanges = true;
 		}
-	}
-
-	if (config_has_user_value(userConfig, "BasicWindow", "MultiviewLayout")) {
-		const char *layout = config_get_string(userConfig, "BasicWindow", "MultiviewLayout");
-
-		bool layoutUpdated = UpdatePre22MultiviewLayout(layout);
-
-		hasChanges = hasChanges | layoutUpdated;
 	}
 
 	if (lastVersion && lastVersion < v24) {
@@ -793,119 +723,6 @@ bool OBSApp::InitLocale()
 	}
 
 	return true;
-}
-
-#if defined(_WIN32) || defined(ENABLE_SPARKLE_UPDATER)
-void ParseBranchesJson(const std::string &jsonString, vector<UpdateBranch> &out, std::string &error)
-{
-	JsonBranches branches;
-
-	try {
-		nlohmann::json json = nlohmann::json::parse(jsonString);
-		branches = json.get<JsonBranches>();
-	} catch (nlohmann::json::exception &e) {
-		error = e.what();
-		return;
-	}
-
-	for (const JsonBranch &json_branch : branches) {
-#ifdef _WIN32
-		if (!json_branch.windows) {
-			continue;
-		}
-#elif defined(__APPLE__)
-		if (!json_branch.macos) {
-			continue;
-		}
-#endif
-
-		UpdateBranch branch = {
-			QString::fromStdString(json_branch.name),
-			QString::fromStdString(json_branch.display_name),
-			QString::fromStdString(json_branch.description),
-			json_branch.enabled,
-			json_branch.visible,
-		};
-		out.push_back(branch);
-	}
-}
-
-bool LoadBranchesFile(vector<UpdateBranch> &out)
-{
-	string error;
-	string branchesText;
-
-	BPtr<char> branchesFilePath = GetAppConfigPathPtr(OBS_USER_DATA_DIR "/updates/branches.json");
-
-	QFile branchesFile(branchesFilePath.Get());
-	if (!branchesFile.open(QIODevice::ReadOnly)) {
-		error = "Opening file failed.";
-		goto fail;
-	}
-
-	branchesText = branchesFile.readAll().toStdString();
-	if (branchesText.empty()) {
-		error = "File empty.";
-		goto fail;
-	}
-
-	ParseBranchesJson(branchesText, out, error);
-	if (error.empty()) {
-		return !out.empty();
-	}
-
-fail:
-	blog(LOG_WARNING, "Loading branches from file failed: %s", error.c_str());
-	return false;
-}
-#endif
-
-void OBSApp::SetBranchData(const string &data)
-{
-#if defined(_WIN32) || defined(ENABLE_SPARKLE_UPDATER)
-	string error;
-	vector<UpdateBranch> result;
-
-	ParseBranchesJson(data, result, error);
-
-	if (!error.empty()) {
-		blog(LOG_WARNING, "Reading branches JSON response failed: %s", error.c_str());
-		return;
-	}
-
-	if (!result.empty()) {
-		updateBranches = result;
-	}
-
-	branches_loaded = true;
-#else
-	UNUSED_PARAMETER(data);
-#endif
-}
-
-std::vector<UpdateBranch> OBSApp::GetBranches()
-{
-	vector<UpdateBranch> out;
-	/* Always ensure the default branch exists */
-	out.push_back(UpdateBranch{"stable", "", "", true, true});
-
-#if defined(_WIN32) || defined(ENABLE_SPARKLE_UPDATER)
-	if (!branches_loaded) {
-		vector<UpdateBranch> result;
-		if (LoadBranchesFile(result)) {
-			updateBranches = result;
-		}
-
-		branches_loaded = true;
-	}
-#endif
-
-	/* Copy additional branches to result (if any) */
-	if (!updateBranches.empty()) {
-		out.insert(out.end(), updateBranches.begin(), updateBranches.end());
-	}
-
-	return out;
 }
 
 OBSApp::OBSApp(int &argc, char **argv, profiler_name_store_t *store)
@@ -1361,11 +1178,6 @@ string OBSApp::GetVersionString(bool platform) const
 bool OBSApp::IsPortableMode()
 {
 	return portable_mode;
-}
-
-bool OBSApp::IsUpdaterDisabled()
-{
-	return opt_disable_updater;
 }
 
 bool OBSApp::IsMissingFilesCheckDisabled()

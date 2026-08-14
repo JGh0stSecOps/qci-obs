@@ -122,6 +122,22 @@ function(set_target_properties_obs target)
         )
       endforeach()
 
+      # CEF finds its helper processes by NAME, derived from the running executable: renaming the
+      # app to QCi-Studio (OUTPUT_NAME above) without renaming "OBS Helper (GPU).app" made the GPU
+      # process fail to launch, and Chromium answers that with FATAL — killing the whole app a few
+      # seconds after every startup. obs-browser is a submodule and cannot be edited, so the
+      # helpers are renamed here, after Embed Frameworks has copied them in. See the script header.
+      if(TARGET OBS::browser-helper_gpu)
+        add_custom_command(
+          TARGET ${target}
+          POST_BUILD
+          # CMAKE_SOURCE_DIR, not CMAKE_CURRENT_SOURCE_DIR: this function runs from frontend/.
+          COMMAND "${CMAKE_SOURCE_DIR}/cmake/macos/fix-cef-helper-names.sh"
+                  "$<TARGET_BUNDLE_DIR:${target}>" "${OBS_CODESIGN_IDENTITY}"
+          COMMENT "Rename CEF helpers to match the QCi Studio executable (CEF resolves them by name)"
+        )
+      endif()
+
       if(VIRTUALCAM_DEVICE_UUID AND VIRTUALCAM_SOURCE_UUID AND VIRTUALCAM_SINK_UUID)
         set(has_virtualcam_uuids TRUE)
       else()

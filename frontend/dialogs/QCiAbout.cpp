@@ -33,19 +33,11 @@ OBSAbout::OBSAbout(QWidget *parent) : QDialog(parent), ui(new Ui::OBSAbout)
 
 	ui->contribute->setText(QTStr("About.Contribute"));
 
-	if (steam) {
-		delete ui->donate;
-	} else {
-		ui->donate->setText("&nbsp;&nbsp;<a href='https://obsproject.com/contribute'>" + QTStr("About.Donate") +
-				    "</a>");
-		ui->donate->setTextInteractionFlags(Qt::TextBrowserInteraction);
-		ui->donate->setOpenExternalLinks(true);
-	}
-
-	ui->getInvolved->setText("&nbsp;&nbsp;<a href='https://obsproject.com/developer-contributing'>" +
-				 QTStr("About.GetInvolved") + "</a>");
-	ui->getInvolved->setTextInteractionFlags(Qt::TextBrowserInteraction);
-	ui->getInvolved->setOpenExternalLinks(true);
+	/* The donate and get-involved links pointed at obsproject.com. A fork that solicits money
+	 * for the project it forked, from its own About box, is asking the operator to fund somebody
+	 * else's roadmap under this application's name. Both rows are gone, not relinked. */
+	delete ui->donate;
+	delete ui->getInvolved;
 
 	ui->about->setText("<a href='#'>" + QTStr("About") + "</a>");
 	ui->authors->setText("<a href='#'>" + QTStr("About.Authors") + "</a>");
@@ -62,67 +54,16 @@ OBSAbout::OBSAbout(QWidget *parent) : QDialog(parent), ui(new Ui::OBSAbout)
 	connect(ui->authors, &ClickableLabel::clicked, this, &OBSAbout::ShowAuthors);
 	connect(ui->license, &ClickableLabel::clicked, this, &OBSAbout::ShowLicense);
 
-	QPointer<OBSAbout> about(this);
-
-	OBSBasic *main = OBSBasic::Get();
-	if (main->patronJson.empty() && !main->patronJsonThread) {
-		RemoteTextThread *thread =
-			new RemoteTextThread("https://obsproject.com/patreon/about-box.json", "application/json");
-		QObject::connect(thread, &RemoteTextThread::Result, main, &OBSBasic::UpdatePatronJson);
-		QObject::connect(thread, &RemoteTextThread::Result, this, &OBSAbout::ShowAbout);
-		main->patronJsonThread.reset(thread);
-		thread->start();
-	} else {
-		ShowAbout();
-	}
+	/* Opening About used to fire an HTTPS GET at obsproject.com for upstream's Patreon roll and
+	 * render it as this application's credits. It was the only network request the dialog made,
+	 * it identified the machine to upstream every time the box was opened, and what it drew was a
+	 * list of people who fund a different project. */
+	ShowAbout();
 }
 
 void OBSAbout::ShowAbout()
 {
-	OBSBasic *main = OBSBasic::Get();
-
-	if (main->patronJson.empty()) {
-		return;
-	}
-
-	std::string error;
-	Json json = Json::parse(main->patronJson, error);
-	const Json::array &patrons = json.array_items();
-	QString text;
-
-	text += "<h1>Top Patreon contributors:</h1>";
-	text += "<p style=\"font-size:16px;\">";
-	bool first = true;
-	bool top = true;
-
-	for (const Json &patron : patrons) {
-		std::string name = patron["name"].string_value();
-		std::string link = patron["link"].string_value();
-		int amount = patron["amount"].int_value();
-
-		if (top && amount < 5000) {
-			text += "</p>";
-			top = false;
-		} else if (!first) {
-			text += "<br/>";
-		}
-
-		if (!link.empty()) {
-			text += "<a href=\"";
-			text += QT_UTF8(link.c_str()).toHtmlEscaped();
-			text += "\">";
-		}
-		text += QT_UTF8(name.c_str()).toHtmlEscaped();
-		if (!link.empty()) {
-			text += "</a>";
-		}
-
-		if (first) {
-			first = false;
-		}
-	}
-
-	ui->textBrowser->setHtml(text);
+	ui->textBrowser->setHtml(QTStr("About.Text"));
 }
 
 void OBSAbout::ShowAuthors()

@@ -10,10 +10,6 @@ if(
     PRIVATE
       dialogs/QCiYoutubeActions.cpp
       dialogs/QCiYoutubeActions.hpp
-      docks/YouTubeAppDock.cpp
-      docks/YouTubeAppDock.hpp
-      docks/YouTubeChatDock.cpp
-      docks/YouTubeChatDock.hpp
       forms/QCiYoutubeActions.ui
       oauth/YoutubeAuth.cpp
       oauth/YoutubeAuth.hpp

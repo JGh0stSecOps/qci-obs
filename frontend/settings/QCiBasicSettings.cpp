@@ -20,12 +20,10 @@
 #include "QCiHotkeyLabel.hpp"
 #include "QCiHotkeyWidget.hpp"
 
-#include <components/Multiview.hpp>
 #include <components/QCiSourceLabel.hpp>
 #include <components/SilentUpdateCheckBox.hpp>
 #include <components/SilentUpdateSpinBox.hpp>
 #ifdef YOUTUBE_ENABLED
-#include <docks/YouTubeAppDock.hpp>
 #endif
 #include <utility/audio-encoders.hpp>
 #include <utility/BaseLexer.hpp>
@@ -357,8 +355,6 @@ OBSBasicSettings::OBSBasicSettings(QWidget *parent)
 
 	/* clang-format off */
 	HookWidget(ui->language,             COMBO_CHANGED,  GENERAL_CHANGED);
-	HookWidget(ui->updateChannelBox,     COMBO_CHANGED,  GENERAL_CHANGED);
-	HookWidget(ui->enableAutoUpdates,    CHECK_CHANGED,  GENERAL_CHANGED);
 	HookWidget(ui->openStatsOnStartup,   CHECK_CHANGED,  GENERAL_CHANGED);
 	HookWidget(ui->hideOBSFromCapture,   CHECK_CHANGED,  GENERAL_CHANGED);
 	HookWidget(ui->warnBeforeStreamStart,CHECK_CHANGED,  GENERAL_CHANGED);
@@ -389,10 +385,6 @@ OBSBasicSettings::OBSBasicSettings(QWidget *parent)
 	HookWidget(ui->doubleClickSwitch,    CHECK_CHANGED,  GENERAL_CHANGED);
 	HookWidget(ui->studioPortraitLayout, CHECK_CHANGED,  GENERAL_CHANGED);
 	HookWidget(ui->prevProgLabelToggle,  CHECK_CHANGED,  GENERAL_CHANGED);
-	HookWidget(ui->multiviewMouseSwitch, CHECK_CHANGED,  GENERAL_CHANGED);
-	HookWidget(ui->multiviewDrawNames,   CHECK_CHANGED,  GENERAL_CHANGED);
-	HookWidget(ui->multiviewDrawAreas,   CHECK_CHANGED,  GENERAL_CHANGED);
-	HookWidget(ui->multiviewLayout,      COMBO_CHANGED,  GENERAL_CHANGED);
 	HookWidget(ui->theme, 		     COMBO_CHANGED,  APPEAR_CHANGED);
 	HookWidget(ui->themeVariant,	     COMBO_CHANGED,  APPEAR_CHANGED);
 	HookWidget(ui->appearanceFontScale,  SLIDER_CHANGED, APPEAR_CHANGED);
@@ -406,7 +398,7 @@ OBSBasicSettings::OBSBasicSettings(QWidget *parent)
 	HookWidget(ui->serviceCustomServer,  EDIT_CHANGED,   STREAM1_CHANGED);
 	HookWidget(ui->key,                  EDIT_CHANGED,   STREAM1_CHANGED);
 	HookWidget(ui->bandwidthTestEnable,  CHECK_CHANGED,  STREAM1_CHANGED);
-	HookWidget(ui->twitchAddonDropdown,  COMBO_CHANGED,  STREAM1_CHANGED);
+	/* QCi: twitchAddonDropdown hook removed with the widget (see forms/QCiBasicSettings.ui). */
 	HookWidget(ui->useAuth,              CHECK_CHANGED,  STREAM1_CHANGED);
 	HookWidget(ui->authUsername,         EDIT_CHANGED,   STREAM1_CHANGED);
 	HookWidget(ui->authPw,               EDIT_CHANGED,   STREAM1_CHANGED);
@@ -594,19 +586,6 @@ OBSBasicSettings::OBSBasicSettings(QWidget *parent)
 	ui->advOutFFVBitrate->setSingleStep(50);
 	ui->advOutFFVBitrate->setSuffix(" Kbps");
 	ui->advOutFFABitrate->setSuffix(" Kbps");
-
-#if !defined(_WIN32) && !defined(ENABLE_SPARKLE_UPDATER)
-	delete ui->updateSettingsGroupBox;
-	ui->updateSettingsGroupBox = nullptr;
-	ui->updateChannelLabel = nullptr;
-	ui->updateChannelBox = nullptr;
-	ui->enableAutoUpdates = nullptr;
-#else
-	// Hide update section if disabled
-	if (App()->IsUpdaterDisabled()) {
-		ui->updateSettingsGroupBox->hide();
-	}
-#endif
 
 	// Remove the Advanced Audio section if monitoring is not supported, as the monitoring device selection is the only item in the group box.
 	if (!obs_audio_monitoring_available()) {
@@ -1216,68 +1195,6 @@ void OBSBasicSettings::LoadLanguageList()
 	ui->language->model()->sort(0);
 }
 
-#if defined(_WIN32) || defined(ENABLE_SPARKLE_UPDATER)
-void TranslateBranchInfo(const QString &name, QString &displayName, QString &description)
-{
-	QString translatedName = QTStr(QT_TO_UTF8(("Basic.Settings.General.ChannelName." + name)));
-	QString translatedDesc = QTStr(QT_TO_UTF8(("Basic.Settings.General.ChannelDescription." + name)));
-
-	if (!translatedName.startsWith("Basic.Settings.")) {
-		displayName = translatedName;
-	}
-	if (!translatedDesc.startsWith("Basic.Settings.")) {
-		description = translatedDesc;
-	}
-}
-#endif
-
-void OBSBasicSettings::LoadBranchesList()
-{
-#if defined(_WIN32) || defined(ENABLE_SPARKLE_UPDATER)
-	bool configBranchRemoved = true;
-	QString configBranch = config_get_string(App()->GetAppConfig(), "General", "UpdateBranch");
-
-	for (const UpdateBranch &branch : App()->GetBranches()) {
-		if (branch.name == configBranch) {
-			configBranchRemoved = false;
-		}
-		if (!branch.is_visible && branch.name != configBranch) {
-			continue;
-		}
-
-		QString displayName = branch.display_name;
-		QString description = branch.description;
-
-		TranslateBranchInfo(branch.name, displayName, description);
-		QString itemDesc = displayName + " - " + description;
-
-		if (!branch.is_enabled) {
-			itemDesc.prepend(" ");
-			itemDesc.prepend(QTStr("Basic.Settings.General.UpdateChannelDisabled"));
-		} else if (branch.name == "stable") {
-			itemDesc.append(" ");
-			itemDesc.append(QTStr("Basic.Settings.General.UpdateChannelDefault"));
-		}
-
-		ui->updateChannelBox->addItem(itemDesc, branch.name);
-
-		// Disable item if branch is disabled
-		if (!branch.is_enabled) {
-			QStandardItemModel *model = dynamic_cast<QStandardItemModel *>(ui->updateChannelBox->model());
-			QStandardItem *item = model->item(ui->updateChannelBox->count() - 1);
-			item->setFlags(Qt::NoItemFlags);
-		}
-	}
-
-	// Fall back to default if not yet set or user-selected branch has been removed
-	if (configBranch.isEmpty() || configBranchRemoved) {
-		configBranch = "stable";
-	}
-
-	int idx = ui->updateChannelBox->findData(configBranch);
-	ui->updateChannelBox->setCurrentIndex(idx);
-#endif
-}
 
 void OBSBasicSettings::LoadGeneralSettings()
 {
@@ -1285,12 +1202,6 @@ void OBSBasicSettings::LoadGeneralSettings()
 
 	LoadLanguageList();
 
-#if defined(_WIN32) || defined(ENABLE_SPARKLE_UPDATER)
-	bool enableAutoUpdates = config_get_bool(App()->GetAppConfig(), "General", "EnableAutoUpdates");
-	ui->enableAutoUpdates->setChecked(enableAutoUpdates);
-
-	LoadBranchesList();
-#endif
 	bool openStatsOnStartup = config_get_bool(main->Config(), "General", "OpenStatsOnStartup");
 	ui->openStatsOnStartup->setChecked(openStatsOnStartup);
 
@@ -1396,39 +1307,6 @@ void OBSBasicSettings::LoadGeneralSettings()
 
 	bool prevProgLabels = config_get_bool(App()->GetUserConfig(), "BasicWindow", "StudioModeLabels");
 	ui->prevProgLabelToggle->setChecked(prevProgLabels);
-
-	bool multiviewMouseSwitch = config_get_bool(App()->GetUserConfig(), "BasicWindow", "MultiviewMouseSwitch");
-	ui->multiviewMouseSwitch->setChecked(multiviewMouseSwitch);
-
-	bool multiviewDrawNames = config_get_bool(App()->GetUserConfig(), "BasicWindow", "MultiviewDrawNames");
-	ui->multiviewDrawNames->setChecked(multiviewDrawNames);
-
-	bool multiviewDrawAreas = config_get_bool(App()->GetUserConfig(), "BasicWindow", "MultiviewDrawAreas");
-	ui->multiviewDrawAreas->setChecked(multiviewDrawAreas);
-
-	ui->multiviewLayout->addItem(QTStr("Basic.Settings.General.MultiviewLayout.Horizontal.Top"),
-				     static_cast<int>(MultiviewLayout::HORIZONTAL_TOP_8_SCENES));
-	ui->multiviewLayout->addItem(QTStr("Basic.Settings.General.MultiviewLayout.Horizontal.Bottom"),
-				     static_cast<int>(MultiviewLayout::HORIZONTAL_BOTTOM_8_SCENES));
-	ui->multiviewLayout->addItem(QTStr("Basic.Settings.General.MultiviewLayout.Vertical.Left"),
-				     static_cast<int>(MultiviewLayout::VERTICAL_LEFT_8_SCENES));
-	ui->multiviewLayout->addItem(QTStr("Basic.Settings.General.MultiviewLayout.Vertical.Right"),
-				     static_cast<int>(MultiviewLayout::VERTICAL_RIGHT_8_SCENES));
-	ui->multiviewLayout->addItem(QTStr("Basic.Settings.General.MultiviewLayout.Horizontal.18Scene.Top"),
-				     static_cast<int>(MultiviewLayout::HORIZONTAL_TOP_18_SCENES));
-	ui->multiviewLayout->addItem(QTStr("Basic.Settings.General.MultiviewLayout.Horizontal.Extended.Top"),
-				     static_cast<int>(MultiviewLayout::HORIZONTAL_TOP_24_SCENES));
-	ui->multiviewLayout->addItem(QTStr("Basic.Settings.General.MultiviewLayout.4Scene"),
-				     static_cast<int>(MultiviewLayout::SCENES_ONLY_4_SCENES));
-	ui->multiviewLayout->addItem(QTStr("Basic.Settings.General.MultiviewLayout.9Scene"),
-				     static_cast<int>(MultiviewLayout::SCENES_ONLY_9_SCENES));
-	ui->multiviewLayout->addItem(QTStr("Basic.Settings.General.MultiviewLayout.16Scene"),
-				     static_cast<int>(MultiviewLayout::SCENES_ONLY_16_SCENES));
-	ui->multiviewLayout->addItem(QTStr("Basic.Settings.General.MultiviewLayout.25Scene"),
-				     static_cast<int>(MultiviewLayout::SCENES_ONLY_25_SCENES));
-
-	ui->multiviewLayout->setCurrentIndex(ui->multiviewLayout->findData(
-		QVariant::fromValue(config_get_int(App()->GetUserConfig(), "BasicWindow", "MultiviewLayout"))));
 
 	prevLangIndex = ui->language->currentIndex();
 
@@ -3049,19 +2927,6 @@ void OBSBasicSettings::SaveGeneralSettings()
 		config_set_string(App()->GetUserConfig(), "General", "Language", language.c_str());
 	}
 
-#if defined(_WIN32) || defined(ENABLE_SPARKLE_UPDATER)
-	if (WidgetChanged(ui->enableAutoUpdates)) {
-		config_set_bool(App()->GetAppConfig(), "General", "EnableAutoUpdates",
-				ui->enableAutoUpdates->isChecked());
-	}
-	int branchIdx = ui->updateChannelBox->currentIndex();
-	QString branchName = ui->updateChannelBox->itemData(branchIdx).toString();
-
-	if (WidgetChanged(ui->updateChannelBox)) {
-		config_set_string(App()->GetAppConfig(), "General", "UpdateBranch", QT_TO_UTF8(branchName));
-		forceUpdateCheck = true;
-	}
-#endif
 #ifdef _WIN32
 	if (ui->hideOBSFromCapture && WidgetChanged(ui->hideOBSFromCapture)) {
 		bool hide_window = ui->hideOBSFromCapture->isChecked();
@@ -3212,34 +3077,6 @@ void OBSBasicSettings::SaveGeneralSettings()
 		main->ResetUI();
 	}
 
-	bool multiviewChanged = false;
-	if (WidgetChanged(ui->multiviewMouseSwitch)) {
-		config_set_bool(App()->GetUserConfig(), "BasicWindow", "MultiviewMouseSwitch",
-				ui->multiviewMouseSwitch->isChecked());
-		multiviewChanged = true;
-	}
-
-	if (WidgetChanged(ui->multiviewDrawNames)) {
-		config_set_bool(App()->GetUserConfig(), "BasicWindow", "MultiviewDrawNames",
-				ui->multiviewDrawNames->isChecked());
-		multiviewChanged = true;
-	}
-
-	if (WidgetChanged(ui->multiviewDrawAreas)) {
-		config_set_bool(App()->GetUserConfig(), "BasicWindow", "MultiviewDrawAreas",
-				ui->multiviewDrawAreas->isChecked());
-		multiviewChanged = true;
-	}
-
-	if (WidgetChanged(ui->multiviewLayout)) {
-		config_set_int(App()->GetUserConfig(), "BasicWindow", "MultiviewLayout",
-			       ui->multiviewLayout->currentData().toInt());
-		multiviewChanged = true;
-	}
-
-	if (multiviewChanged) {
-		OBSProjector::UpdateMultiviewProjectors();
-	}
 }
 
 void OBSBasicSettings::SaveVideoSettings()
@@ -3991,26 +3828,6 @@ void OBSBasicSettings::on_listWidget_itemSelectionChanged()
 	pageIndex = row;
 }
 
-void OBSBasicSettings::UpdateYouTubeAppDockSettings()
-{
-#if defined(BROWSER_AVAILABLE) && defined(YOUTUBE_ENABLED)
-	if (cef_js_avail) {
-		std::string service = ui->service->currentText().toStdString();
-		if (IsYouTubeService(service)) {
-			if (!main->GetYouTubeAppDock()) {
-				main->NewYouTubeAppDock();
-			}
-			main->GetYouTubeAppDock()->SettingsUpdated(!IsYouTubeService(service) || stream1Changed);
-		} else {
-			if (main->GetYouTubeAppDock()) {
-				main->GetYouTubeAppDock()->AccountDisconnected();
-			}
-			main->DeleteYouTubeAppDock();
-		}
-	}
-#endif
-}
-
 void OBSBasicSettings::on_buttonBox_clicked(QAbstractButton *button)
 {
 	QDialogButtonBox::ButtonRole val = ui->buttonBox->buttonRole(button);
@@ -4022,7 +3839,6 @@ void OBSBasicSettings::on_buttonBox_clicked(QAbstractButton *button)
 
 		SaveSettings();
 
-		UpdateYouTubeAppDockSettings();
 		ClearChanged();
 	}
 
@@ -4237,11 +4053,6 @@ bool OBSBasicSettings::AskIfCanCloseSettings()
 		main->auth->Save();
 		main->auth->Load();
 		forceAuthReload = false;
-	}
-
-	if (forceUpdateCheck) {
-		main->CheckForUpdates(false);
-		forceUpdateCheck = false;
 	}
 
 	return canCloseSettings;

@@ -860,21 +860,33 @@ static QPalette PreparePalette(const QHash<QString, OBSThemeVariable> &vars, con
 	return pal;
 }
 
+/*
+ * The layout scale, in one function.
+ *
+ * The return value lands in --obsPadding, which Yami.obt spends on --padding_base_value and
+ * --spacing_base_value, from which roughly forty derived sizes are calculated. Getting it wrong
+ * does not fail: it relaids the whole application one notch off and looked plausible.
+ *
+ * The ids are OBSDensity (utility/QCiTheme.hpp), which explains why they are negative. The
+ * fallback is the DEFAULT DENSITY rather than a loose literal, so an id from an older config or a
+ * hand-edited ini lands where a fresh profile lands instead of somewhere only this line knows
+ * about.
+ */
 static double getPaddingForDensityId(int id)
 {
-	double paddingValue = 4;
-
-	if (id == -2) {
-		paddingValue = 0.25;
-	} else if (id == -3) {
-		paddingValue = 2;
-	} else if (id == -4) {
-		paddingValue = 4;
-	} else if (id == -5) {
-		paddingValue = 6;
+	switch (static_cast<OBSDensity>(id)) {
+	case OBSDensity::Classic:
+		return 0.25;
+	case OBSDensity::Compact:
+		return 2;
+	case OBSDensity::Normal:
+		return 4;
+	case OBSDensity::Comfortable:
+		return 6;
 	}
 
-	return paddingValue;
+	blog(LOG_WARNING, "Unknown Appearance/Density id %d, using the default", id);
+	return getPaddingForDensityId(OBS_DENSITY_DEFAULT);
 }
 
 OBSTheme *OBSApp::GetTheme(const QString &name)
@@ -1035,14 +1047,29 @@ void OBSApp::themeFileChanged(const QString &path)
 	SetTheme(currentTheme->id);
 }
 
+/* EVERY LEGACY NAME NOW LANDS ON QCi, because every other theme has been deleted.
+ *
+ * Acri, Rachni, Light, Classic, Grey, Default and System are gone from frontend/data/themes — the
+ * operator asked for one theme, and shipping seven others means a stray click in Appearance
+ * restores stock OBS's look, which is the verdict this whole pass exists to fix. Yami.obt STAYS:
+ * QCi.obt extends com.obsproject.Yami and inherits ~2700 lines of widget rules from it, so
+ * deleting it would unthemed every dialog in the application. The Dark/ asset directory stays for
+ * the same reason — Yami.obt itself resolves url(theme:Dark/...).
+ *
+ * The rows are kept rather than deleted so an existing profile that names one of them is MIGRATED
+ * rather than falling through InitTheme()'s "theme not found" path, which logs a warning on every
+ * launch about a theme the operator never chose and cannot restore. */
 static map<string, string> themeMigrations = {
-	{"Yami", DEFAULT_THEME},
-	{"Grey", "com.obsproject.Yami.Grey"},
-	{"Rachni", "com.obsproject.Yami.Rachni"},
-	{"Light", "com.obsproject.Yami.Light"},
-	{"Dark", "com.obsproject.Yami.Classic"},
-	{"Acri", "com.obsproject.Yami.Acri"},
-	{"System", "com.obsproject.System"},
+	{"Yami", DEFAULT_THEME},   {"Grey", DEFAULT_THEME},  {"Rachni", DEFAULT_THEME},
+	{"Light", DEFAULT_THEME},  {"Dark", DEFAULT_THEME},  {"Acri", DEFAULT_THEME},
+	{"System", DEFAULT_THEME}, {"Classic", DEFAULT_THEME},
+	{"com.obsproject.Yami.Grey", DEFAULT_THEME},
+	{"com.obsproject.Yami.Rachni", DEFAULT_THEME},
+	{"com.obsproject.Yami.Light", DEFAULT_THEME},
+	{"com.obsproject.Yami.Classic", DEFAULT_THEME},
+	{"com.obsproject.Yami.Acri", DEFAULT_THEME},
+	{"com.obsproject.Yami.Original", DEFAULT_THEME},
+	{"com.obsproject.System", DEFAULT_THEME},
 };
 
 bool OBSApp::InitTheme()

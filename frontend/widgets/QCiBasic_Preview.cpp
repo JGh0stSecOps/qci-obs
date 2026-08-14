@@ -245,18 +245,25 @@ void OBSBasic::on_preview_customContextMenuRequested()
 void OBSBasic::on_previewDisabledWidget_customContextMenuRequested()
 {
 	QMenu popup(this);
-	delete previewProjectorMain;
 
 	QAction *action = popup.addAction(QTStr("Basic.Main.PreviewConextMenu.Enable"), this, &OBSBasic::TogglePreview);
 	action->setCheckable(true);
 	action->setChecked(obs_display_enabled(ui->preview->GetDisplay()));
 
-	previewProjectorMain = new QMenu(QTStr("Projector.Open.Preview"));
-	AddProjectorMenuMonitors(previewProjectorMain, this, &OBSBasic::OpenPreviewProjector);
-	previewProjectorMain->addSeparator();
-	previewProjectorMain->addAction(QTStr("Projector.Window"), this, &OBSBasic::OpenPreviewWindow);
+	/* THE PROGRAM PROJECTOR IS THE ONLY PROJECTOR LEFT, and this is the only place that offers it.
+	 * The scene and source projector submenus that used to sit beside it are deleted: they render
+	 * a named source directly, which means they render the camera OUTSIDE the scene composite the
+	 * mask lives in. This one renders the main texture, i.e. exactly what is already going out.
+	 *
+	 * It is a stack QMenu parented to `popup` rather than the `previewProjectorMain` member it was:
+	 * that member existed only so the handler could `delete` last time's menu before building this
+	 * time's — a hand-rolled ownership scheme for a menu whose lifetime is one exec() call. */
+	QMenu programProjector(QTStr("Projector.Open.Program"), &popup);
+	AddProjectorMenuMonitors(&programProjector, this, &OBSBasic::OpenPreviewProjector);
+	programProjector.addSeparator();
+	programProjector.addAction(QTStr("Projector.Window"), this, &OBSBasic::OpenPreviewWindow);
 
-	popup.addMenu(previewProjectorMain);
+	popup.addMenu(&programProjector);
 	popup.exec(QCursor::pos());
 }
 

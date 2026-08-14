@@ -1,7 +1,6 @@
 #include "QCiProjector.hpp"
 
 #include <QCiApp.hpp>
-#include <components/Multiview.hpp>
 #include <utility/display-helpers.hpp>
 #include <utility/platform.hpp>
 #include <widgets/QCiBasic.hpp>
@@ -13,9 +12,6 @@
 
 #include "moc_QCiProjector.cpp"
 
-static QList<OBSProjector *> multiviewProjectors;
-
-static bool updatingMultiview = false, mouseSwitching, transitionOnDoubleClick;
 
 OBSProjector::OBSProjector(QWidget *widget, obs_source_t *source_, int monitor, ProjectorType type_)
 	: OBSQTDisplay(widget, Qt::Window),
@@ -72,21 +68,12 @@ OBSProjector::OBSProjector(QWidget *widget, obs_source_t *source_, int monitor, 
 	installEventFilter(CreateShortcutFilter());
 
 	auto addDrawCallback = [this]() {
-		bool isMultiview = type == ProjectorType::Multiview;
-		obs_display_add_draw_callback(GetDisplay(), isMultiview ? OBSRenderMultiview : OBSRender, this);
+		obs_display_add_draw_callback(GetDisplay(), OBSRender, this);
 		obs_display_set_background_color(GetDisplay(), 0x000000);
 	};
 
 	connect(this, &OBSQTDisplay::DisplayCreated, this, addDrawCallback);
 	connect(App(), &QGuiApplication::screenRemoved, this, &OBSProjector::ScreenRemoved);
-
-	if (type == ProjectorType::Multiview) {
-		multiview = new Multiview();
-
-		UpdateMultiview();
-
-		multiviewProjectors.push_back(this);
-	}
 
 	App()->IncrementSleepInhibition();
 
@@ -106,17 +93,11 @@ OBSProjector::~OBSProjector()
 {
 	sigs.clear();
 
-	bool isMultiview = type == ProjectorType::Multiview;
-	obs_display_remove_draw_callback(GetDisplay(), isMultiview ? OBSRenderMultiview : OBSRender, this);
+	obs_display_remove_draw_callback(GetDisplay(), OBSRender, this);
 
 	OBSSource source = GetSource();
 	if (source) {
 		obs_source_dec_showing(source);
-	}
-
-	if (isMultiview) {
-		delete multiview;
-		multiviewProjectors.removeAll(this);
 	}
 
 	App()->DecrementSleepInhibition();
@@ -138,22 +119,11 @@ void OBSProjector::SetHideCursor()
 
 	bool hideCursor = config_get_bool(App()->GetUserConfig(), "BasicWindow", "HideProjectorCursor");
 
-	if (hideCursor && type != ProjectorType::Multiview) {
+	if (hideCursor) {
 		setCursor(Qt::BlankCursor);
 	} else {
 		setCursor(Qt::ArrowCursor);
 	}
-}
-
-void OBSProjector::OBSRenderMultiview(void *data, uint32_t cx, uint32_t cy)
-{
-	OBSProjector *window = (OBSProjector *)data;
-
-	if (updatingMultiview || !window->ready) {
-		return;
-	}
-
-	window->multiview->Render(cx, cy);
 }
 
 void OBSProjector::OBSRender(void *data, uint32_t cx, uint32_t cy)
@@ -164,51 +134,28 @@ void OBSProjector::OBSRender(void *data, uint32_t cx, uint32_t cy)
 		return;
 	}
 
-	OBSBasic *main = OBSBasic::Get();
-	OBSSource source = window->GetSource();
+	/* THE PROGRAM PROJECTOR RENDERS THE MAIN TEXTURE AND NOTHING ELSE.
+	 *
+	 * Upstream's OBSRender resolved window->weakSource first and only fell through to
+	 * obs_render_main_texture() when there wasn't one — that branch is what made the scene and
+	 * source projectors possible, and it is what put an unmasked camera on a display. There is no
+	 * source path any more: the only thing this window can draw is the composite that is already
+	 * being broadcast, mask included, so by construction it exposes nothing new. */
+	struct obs_video_info ovi;
+	obs_get_video_info(&ovi);
 
-	uint32_t targetCX;
-	uint32_t targetCY;
+	const uint32_t targetCX = ovi.base_width;
+	const uint32_t targetCY = ovi.base_height;
 	int x, y;
-	int newCX, newCY;
 	float scale;
-
-	if (source) {
-		targetCX = std::max(obs_source_get_width(source), 1u);
-		targetCY = std::max(obs_source_get_height(source), 1u);
-	} else {
-		struct obs_video_info ovi;
-		obs_get_video_info(&ovi);
-		targetCX = ovi.base_width;
-		targetCY = ovi.base_height;
-	}
 
 	GetScaleAndCenterPos(targetCX, targetCY, cx, cy, x, y, scale);
 
-	newCX = int(scale * float(targetCX));
-	newCY = int(scale * float(targetCY));
+	const int newCX = int(scale * float(targetCX));
+	const int newCY = int(scale * float(targetCY));
 
 	startRegion(x, y, newCX, newCY, 0.0f, float(targetCX), 0.0f, float(targetCY));
-
-	if (window->type == ProjectorType::Preview && main->IsPreviewProgramMode()) {
-		OBSSource curSource = main->GetCurrentSceneSource();
-
-		if (source != curSource) {
-			obs_source_dec_showing(source);
-			obs_source_inc_showing(curSource);
-			source = curSource;
-			window->weakSource = OBSGetWeakRef(source);
-		}
-	} else if (window->type == ProjectorType::Preview && !main->IsPreviewProgramMode()) {
-		window->weakSource = nullptr;
-	}
-
-	if (source) {
-		obs_source_video_render(source);
-	} else {
-		obs_render_main_texture();
-	}
-
+	obs_render_main_texture();
 	endRegion();
 }
 
@@ -229,37 +176,10 @@ void OBSProjector::OBSSourceDestroyed(void *data, calldata_t *)
 
 void OBSProjector::mouseDoubleClickEvent(QMouseEvent *event)
 {
+	/* Upstream used this to cut a multiview cell to program on a double click. There is no
+	 * multiview and there is no preview/program split, so a double click on the program window
+	 * does nothing — and MUST do nothing: this window shows what is already on air. */
 	OBSQTDisplay::mouseDoubleClickEvent(event);
-
-	if (!mouseSwitching) {
-		return;
-	}
-
-	if (!transitionOnDoubleClick) {
-		return;
-	}
-
-	// Only MultiView projectors handle double click
-	if (this->type != ProjectorType::Multiview) {
-		return;
-	}
-
-	OBSBasic *main = (OBSBasic *)obs_frontend_get_main_window();
-	if (!main->IsPreviewProgramMode()) {
-		return;
-	}
-
-	if (event->button() == Qt::LeftButton) {
-		QPoint pos = event->pos();
-		OBSSource src = multiview->GetSourceByPosition(pos.x(), pos.y());
-		if (!src) {
-			return;
-		}
-
-		if (main->GetProgramSource() != src) {
-			main->TransitionToScene(src);
-		}
-	}
 }
 
 void OBSProjector::mousePressEvent(QMouseEvent *event)
@@ -290,26 +210,6 @@ void OBSProjector::mousePressEvent(QMouseEvent *event)
 
 		popup.addAction(QTStr("Close"), this, &OBSProjector::EscapeTriggered);
 		popup.exec(QCursor::pos());
-	} else if (event->button() == Qt::LeftButton) {
-		// Only MultiView projectors handle left click
-		if (this->type != ProjectorType::Multiview) {
-			return;
-		}
-
-		if (!mouseSwitching) {
-			return;
-		}
-
-		QPoint pos = event->pos();
-		OBSSource src = multiview->GetSourceByPosition(pos.x(), pos.y());
-		if (!src) {
-			return;
-		}
-
-		OBSBasic *main = (OBSBasic *)obs_frontend_get_main_window();
-		if (main->GetCurrentSceneSource() != src) {
-			main->SetCurrentScene(src, false);
-		}
 	}
 }
 
@@ -319,47 +219,10 @@ void OBSProjector::EscapeTriggered()
 	main->DeleteProjector(this);
 }
 
-void OBSProjector::UpdateMultiview()
-{
-	MultiviewLayout multiviewLayout =
-		static_cast<MultiviewLayout>(config_get_int(App()->GetUserConfig(), "BasicWindow", "MultiviewLayout"));
-
-	bool drawLabel = config_get_bool(App()->GetUserConfig(), "BasicWindow", "MultiviewDrawNames");
-
-	bool drawSafeArea = config_get_bool(App()->GetUserConfig(), "BasicWindow", "MultiviewDrawAreas");
-
-	mouseSwitching = config_get_bool(App()->GetUserConfig(), "BasicWindow", "MultiviewMouseSwitch");
-
-	transitionOnDoubleClick = config_get_bool(App()->GetUserConfig(), "BasicWindow", "TransitionOnDoubleClick");
-
-	multiview->Update(multiviewLayout, drawLabel, drawSafeArea);
-}
-
 void OBSProjector::UpdateProjectorTitle(QString name)
 {
-	QString title = nullptr;
-	switch (type) {
-	case ProjectorType::Scene:
-		title = QTStr("Projector.Title") + " - " + QTStr("Projector.Title.Scene").arg(name);
-		break;
-	case ProjectorType::Source:
-		title = QTStr("Projector.Title") + " - " + QTStr("Projector.Title.Source").arg(name);
-		break;
-	case ProjectorType::Preview:
-		title = QTStr("Projector.Title") + " - " + QTStr("StudioMode.Preview");
-		break;
-	case ProjectorType::StudioProgram:
-		title = QTStr("Projector.Title") + " - " + QTStr("StudioMode.Program");
-		break;
-	case ProjectorType::Multiview:
-		title = QTStr("Projector.Title") + " - " + QTStr("Projector.Title.Multiview");
-		break;
-	default:
-		title = name;
-		break;
-	}
-
-	setWindowTitle(title);
+	UNUSED_PARAMETER(name);
+	setWindowTitle(QTStr("Projector.Title") + " - " + QTStr("Projector.Title.Program"));
 }
 
 OBSSource OBSProjector::GetSource()
@@ -375,21 +238,6 @@ ProjectorType OBSProjector::GetProjectorType()
 int OBSProjector::GetMonitor()
 {
 	return savedMonitor;
-}
-
-void OBSProjector::UpdateMultiviewProjectors()
-{
-	obs_enter_graphics();
-	updatingMultiview = true;
-	obs_leave_graphics();
-
-	for (auto &projector : multiviewProjectors) {
-		projector->UpdateMultiview();
-	}
-
-	obs_enter_graphics();
-	updatingMultiview = false;
-	obs_leave_graphics();
 }
 
 void OBSProjector::RenameProjector(QString oldName, QString newName)

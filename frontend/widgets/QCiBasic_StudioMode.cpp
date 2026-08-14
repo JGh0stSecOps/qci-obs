@@ -402,13 +402,23 @@ void OBSBasic::DisablePreviewProgram()
 	SetPreviewProgramMode(false);
 }
 
+/* ProjectorType::StudioProgram COLLAPSED INTO ProjectorType::Program.
+ *
+ * They were never two different pictures: upstream's StudioProgram projector renders the main
+ * texture, and so does the Preview projector when studio mode is off. The split existed only so a
+ * title bar could say "Program" instead of "Preview" while the preview/program pair was on screen.
+ * With the scene, source and multiview projectors deleted there is exactly one projector left and
+ * it renders the program composite, so both of these entry points open that.
+ *
+ * They stay rather than being deleted with the type because Studio Mode itself has NOT been removed
+ * in this pass — see the report. When it goes, these two go with it. */
 void OBSBasic::OpenStudioProgramProjector()
 {
 	int monitor = sender()->property("monitor").toInt();
-	OpenProjector(nullptr, monitor, ProjectorType::StudioProgram);
+	OpenProjector(nullptr, monitor, ProjectorType::Program);
 }
 
 void OBSBasic::OpenStudioProgramWindow()
 {
-	OpenProjector(nullptr, -1, ProjectorType::StudioProgram);
+	OpenProjector(nullptr, -1, ProjectorType::Program);
 }

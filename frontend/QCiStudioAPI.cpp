@@ -438,23 +438,27 @@ config_t *OBSStudioAPI::obs_frontend_get_user_config()
 
 void OBSStudioAPI::obs_frontend_open_projector(const char *type, int monitor, const char *geometry, const char *name)
 {
+	/* THE PLUGIN API STILL TAKES A TYPE STRING, AND NOW ANSWERS "no" TO FOUR OF THEM.
+	 * obs-websocket is the caller that matters here — it exposes OpenSourceProjector /
+	 * OpenSceneProjector over the wire, and this rig's websocket is reachable from the events
+	 * server. Honouring "Source" would let a websocket request put an unmasked camera on a
+	 * display, which is the whole reason those projectors were deleted from the UI. Deleting the
+	 * UI and leaving the API open would have moved the hole, not closed it. */
+	if (type && astrcmpi(type, "Preview") != 0 && astrcmpi(type, "Program") != 0) {
+		blog(LOG_WARNING,
+		     "obs_frontend_open_projector: refusing projector type '%s' — only the program "
+		     "projector exists in QCi Studio; scene, source, studio-program and multiview "
+		     "projectors render outside the program composite and were removed",
+		     type);
+		return;
+	}
+
 	SavedProjectorInfo proj = {
-		ProjectorType::Preview,
+		ProjectorType::Program,
 		monitor,
 		geometry ? geometry : "",
 		name ? name : "",
 	};
-	if (type) {
-		if (astrcmpi(type, "Source") == 0) {
-			proj.type = ProjectorType::Source;
-		} else if (astrcmpi(type, "Scene") == 0) {
-			proj.type = ProjectorType::Scene;
-		} else if (astrcmpi(type, "StudioProgram") == 0) {
-			proj.type = ProjectorType::StudioProgram;
-		} else if (astrcmpi(type, "Multiview") == 0) {
-			proj.type = ProjectorType::Multiview;
-		}
-	}
 	QMetaObject::invokeMethod(main, [this, &proj]() { main->OpenSavedProjector(&proj); }, WaitConnection());
 }
 

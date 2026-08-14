@@ -1,4 +1,6 @@
+<!-- QCi. Fill =c-grn (rig), tick =c-ink (rig): 8.25:1. This is .tg[aria-checked="true"] from
+     control.html — a solid structure-green block with the one ink that goes on a solid fill. -->
 <svg version="1.1" x="0" y="0" width="128" height="128" viewBox="0 0 128 128">
-<rect x="14" y="14" width="100" height="100" fill="#22D3EE"/>
-<polyline points="34,66 55,88 96,40" fill="none" stroke="#04070A" stroke-width="14" stroke-linecap="butt" stroke-linejoin="miter"/>
+<rect x="14" y="14" width="100" height="100" fill="#22C55E"/>
+<polyline points="34,66 55,88 96,40" fill="none" stroke="#04150B" stroke-width="14" stroke-linecap="butt" stroke-linejoin="miter"/>
 </svg>

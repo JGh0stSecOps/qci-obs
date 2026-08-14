@@ -21,7 +21,6 @@
 
 #ifdef YOUTUBE_ENABLED
 #include <dialogs/QCiYoutubeActions.hpp>
-#include <docks/YouTubeAppDock.hpp>
 #include <utility/YoutubeApiWrappers.hpp>
 #endif
 
@@ -210,50 +209,12 @@ void OBSBasic::SetupBroadcast()
 #endif
 }
 
-#ifdef YOUTUBE_ENABLED
-YouTubeAppDock *OBSBasic::GetYouTubeAppDock()
-{
-	return youtubeAppDock;
-}
+/* THE YOUTUBE LIVE CONTROL PANEL DOCK LIVED HERE — GetYouTubeAppDock(), NewYouTubeAppDock() and
+ * DeleteYouTubeAppDock(), plus the five-second recreate throttle that existed because creating and
+ * destroying a CEF widget too quickly crashes Chromium.
+ *
+ * It embedded YouTube Studio's own live control panel in a dock: a second visual language, a second
+ * set of transport controls for the same broadcast, and a browser process kept alive for the whole
+ * stream. Broadcast management belongs in one place; the OAuth flow and the broadcast/VOD tables
+ * stay, and the dock does not. */
 
-#ifndef SEC_TO_NSEC
-#define SEC_TO_NSEC 1000000000
-#endif
-
-void OBSBasic::NewYouTubeAppDock()
-{
-	if (!cef_js_avail) {
-		return;
-	}
-
-	/* make sure that the youtube app dock can't be immediately recreated.
-	 * dumb hack. blame chromium. or this particular dock. or both. if CEF
-	 * creates/destroys/creates a widget too quickly it can lead to a
-	 * crash. */
-	uint64_t ts = os_gettime_ns();
-	if ((ts - lastYouTubeAppDockCreationTime) < (5ULL * SEC_TO_NSEC)) {
-		return;
-	}
-
-	lastYouTubeAppDockCreationTime = ts;
-
-	if (youtubeAppDock) {
-		RemoveDockWidget(youtubeAppDock->objectName());
-	}
-
-	youtubeAppDock = new YouTubeAppDock("YouTube Live Control Panel");
-}
-
-void OBSBasic::DeleteYouTubeAppDock()
-{
-	if (!cef_js_avail) {
-		return;
-	}
-
-	if (youtubeAppDock) {
-		RemoveDockWidget(youtubeAppDock->objectName());
-	}
-
-	youtubeAppDock = nullptr;
-}
-#endif

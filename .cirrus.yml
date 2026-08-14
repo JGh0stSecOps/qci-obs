@@ -13,8 +13,9 @@ task:
     cmake ninja binutils pkgconf curl kf6-extra-cmake-modules
     ffmpeg qt6-base qt6-svg jansson libsysinfo e2fsprogs-libuuid pulseaudio
     alsa-lib pipewire v4l_compat libpci librist srt nlohmann-json uthash
-    qr-code-generator websocketpp asio vlc swig luajit jackit sndio fdk-aac
+    qr-code-generator websocketpp asio vlc swig luajit jackit sndio
     libdatachannel
+    python3
   script:
   - cmake
     -S $(pwd)
@@ -23,7 +24,26 @@ task:
     -DOBS_CMAKE_VERSION=3.0
     -DENABLE_JACK:BOOL=ON
     -DENABLE_SNDIO:BOOL=ON
-    -DENABLE_LIBFDK:BOOL=ON
   - cmake
     --build build
     --config RelWithDebInfo
+  # QCi: this task used to configure, build, and stop. Every add_test() in the tree — including
+  # qci-branding, the check added because 146 translated strings shipped claiming this fork
+  # uploads crash reports to the OBSProject — ran only when a human typed `ctest` by hand.
+  #
+  # No -C: Ninja is single-config, so there is no configuration to select. Nothing extra has to
+  # be built either, since `cmake --build build` above has no --target and the default target
+  # already covers obs-x264-test, the one test binary that exists on FreeBSD (qci-vision-frame
+  # and qci-au-format belong to MACOS-only plugins).
+  #
+  # --no-tests=error is the fail-closed clause: ctest exits 0 when it finds no tests at all, so
+  # without it this step would go green on a build whose test registration had silently vanished
+  # — exactly the enable_testing()-ordering regression documented in CMakeLists.txt:22-38.
+  #
+  # python3 is in the pkg list above for qci-branding. The root CMakeLists already hard-requires
+  # it via find_program(QCI_PYTHON ... REQUIRED), so the configure step depends on it whether or
+  # not this task runs ctest; naming it here stops that from being an accident of the image.
+  - ctest
+    --test-dir build
+    --output-on-failure
+    --no-tests=error

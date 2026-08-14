@@ -61,7 +61,10 @@ endif()
 include(cmake/feature-twitch.cmake)
 include(cmake/feature-restream.cmake)
 include(cmake/feature-youtube.cmake)
-include(cmake/feature-whatsnew.cmake)
+# feature-whatsnew.cmake is gone. The What's New panel fetched and signature-checked a JSON feed
+# from upstream's update service; the fork had already blanked the URL, but the feature still
+# dragged in blake2, Security.framework, a signature verifier and the branch/update machinery.
+# Removed wholesale — see the note in feature-sparkle.cmake for why this fork does not self-update.
 include(cmake/feature-idian-playground.cmake)
 
 configure_file(cmake/templates/ui-config.h.in ui-config.h)
@@ -113,3 +116,33 @@ source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" PREFIX "Header Files" FILES ${ta
 source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" PREFIX "Qt Files" FILES ${target_qt_sources})
 
 set_target_properties_obs(obs-studio PROPERTIES FOLDER frontend OUTPUT_NAME "$<IF:$<PLATFORM_ID:Windows>,obs64,obs>")
+
+# --- QCi: the theme assets are validated at BUILD time, not at launch time ------------------
+#
+# WHY THIS EXISTS. Three of the six QCi checkbox SVGs shipped malformed: each carried a literal
+# "--" inside an XML comment (a URL and a prose dash), which is illegal XML, so Qt's qsvg loader
+# rejected the WHOLE file. The effect was that the two commonest checkbox states in the entire
+# application drew with no indicator at all -- every checkbox in Settings was empty. It failed
+# silently into a log nobody tails, on every single launch, and it survived a theme rewrite.
+#
+# An asset that can only fail at runtime will fail at runtime. This turns it into a build error.
+# It also covers the .obt files, which are not XML but must at least exist and be non-empty --
+# a missing file in the theme chain makes GetTheme() return nothing and the app falls back to a
+# theme that is also missing, which is a blank window rather than an error message.
+find_program(QCI_XMLLINT_EXECUTABLE xmllint)
+if(QCI_XMLLINT_EXECUTABLE)
+  file(GLOB QCI_THEME_SVGS "${CMAKE_CURRENT_SOURCE_DIR}/data/themes/QCi/*.svg")
+  if(QCI_THEME_SVGS)
+    add_custom_target(
+      qci-validate-theme-assets ALL
+      COMMAND "${QCI_XMLLINT_EXECUTABLE}" --noout ${QCI_THEME_SVGS}
+      COMMENT "QCi: validating theme SVG assets (malformed XML is a build failure, not a silent blank icon)"
+      VERBATIM
+    )
+    set_target_properties(qci-validate-theme-assets PROPERTIES FOLDER frontend)
+    add_dependencies(obs-studio qci-validate-theme-assets)
+  endif()
+else()
+  message(WARNING "QCi: xmllint not found -- theme SVG assets will NOT be validated at build time. "
+                  "A malformed asset will fail silently at runtime instead.")
+endif()

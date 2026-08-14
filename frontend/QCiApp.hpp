@@ -55,14 +55,6 @@ enum class LogFileState { NoState, New, Uploaded };
 class PluginManager;
 } // namespace OBS
 
-struct UpdateBranch {
-	QString name;
-	QString display_name;
-	QString description;
-	bool is_enabled;
-	bool is_visible;
-};
-
 class OBSApp : public QApplication {
 	Q_OBJECT
 
@@ -79,9 +71,6 @@ private:
 	TextLookup textLookup;
 	QPointer<OBSMainWindow> mainWindow;
 	profiler_name_store_t *profilerNameStore = nullptr;
-	std::vector<UpdateBranch> updateBranches;
-	bool branches_loaded = false;
-
 	bool libobs_initialized = false;
 
 	os_inhibit_t *sleepInhibitor = nullptr;
@@ -96,7 +85,6 @@ private:
 
 	std::unique_ptr<OBS::PluginManager> pluginManager_;
 
-	bool UpdatePre22MultiviewLayout(const char *layout);
 
 	bool InitGlobalConfig();
 	bool InitGlobalConfigDefaults();
@@ -171,9 +159,6 @@ public:
 	bool IsThemeDark() const { return currentTheme ? currentTheme->isDark : false; }
 	QStyle *GetInvisibleCursorStyle();
 
-	void SetBranchData(const std::string &data);
-	std::vector<UpdateBranch> GetBranches();
-
 	inline lookup_t *GetTextLookup() const { return textLookup; }
 
 	inline const char *GetString(const char *lookupVal) const { return textLookup.GetString(lookupVal); }
@@ -194,7 +179,6 @@ public:
 
 	std::string GetVersionString(bool platform = true) const;
 	bool IsPortableMode();
-	bool IsUpdaterDisabled();
 	bool IsMissingFilesCheckDisabled();
 
 	const char *InputAudioSource() const;

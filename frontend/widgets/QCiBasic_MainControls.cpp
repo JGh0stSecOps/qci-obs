@@ -36,14 +36,7 @@
 #endif
 #include <dialogs/QCiRemux.hpp>
 #include <settings/QCiBasicSettings.hpp>
-#ifdef _WIN32
-#include <utility/AutoUpdateThread.hpp>
-#endif
 #include <utility/RemoteTextThread.hpp>
-#if defined(_WIN32) || defined(WHATSNEW_ENABLED)
-#include <utility/WhatsNewInfoThread.hpp>
-#endif
-#include <wizards/AutoConfig.hpp>
 
 #include <qt-wrappers.hpp>
 #include <ui-config.h>
@@ -118,12 +111,6 @@ void OBSBasic::CreateFiltersWindow(obs_source_t *source)
 	filters->setAttribute(Qt::WA_DeleteOnClose, true);
 }
 
-void OBSBasic::updateCheckFinished()
-{
-	ui->actionCheckForUpdates->setEnabled(true);
-	ui->actionRepair->setEnabled(true);
-}
-
 void OBSBasic::ResetUI()
 {
 	bool studioPortraitLayout = config_get_bool(App()->GetUserConfig(), "BasicWindow", "StudioPortraitLayout");
@@ -146,9 +133,8 @@ void OBSBasic::CloseDialogs()
 		}
 	}
 
-	if (!stats.isNull()) {
-		stats->close(); //call close to save Stats geometry
-	}
+	/* No `stats` window to close any more — Stats is the dock, and a dock's geometry is saved by
+	 * saveState() into DockState rather than by a widget close handler. See on_stats_triggered(). */
 	if (!remux.isNull()) {
 		remux->close();
 	}
@@ -339,28 +325,6 @@ void OBSBasic::on_actionShowLogs_triggered()
 	QDesktopServices::openUrl(url);
 }
 
-void OBSBasic::on_actionUploadCurrentLog_triggered()
-{
-	ui->menuLogFiles->setEnabled(false);
-
-	LogUploadDialog uploadDialog{this, LogUploadType::CurrentAppLog};
-
-	uploadDialog.exec();
-
-	ui->menuLogFiles->setEnabled(true);
-}
-
-void OBSBasic::on_actionUploadLastLog_triggered()
-{
-	ui->menuLogFiles->setEnabled(false);
-
-	LogUploadDialog uploadDialog{this, LogUploadType::LastAppLog};
-
-	uploadDialog.exec();
-
-	ui->menuLogFiles->setEnabled(true);
-}
-
 void OBSBasic::on_actionViewCurrentLog_triggered()
 {
 	if (!logView) {
@@ -376,37 +340,6 @@ void OBSBasic::on_actionViewCurrentLog_triggered()
 void OBSBasic::on_actionShowCrashLogs_triggered()
 {
 	App()->openCrashLogDirectory();
-}
-
-void OBSBasic::on_actionUploadLastCrashLog_triggered()
-{
-	ui->menuCrashLogs->setEnabled(false);
-
-	LogUploadDialog uploadDialog{this, LogUploadType::CrashLog};
-
-	uploadDialog.exec();
-
-	ui->menuCrashLogs->setEnabled(true);
-}
-
-void OBSBasic::on_actionCheckForUpdates_triggered()
-{
-	CheckForUpdates(true);
-}
-
-void OBSBasic::on_actionRepair_triggered()
-{
-#if defined(_WIN32)
-	ui->actionCheckForUpdates->setEnabled(false);
-	ui->actionRepair->setEnabled(false);
-
-	if (updateCheckThread && updateCheckThread->isRunning()) {
-		return;
-	}
-
-	updateCheckThread.reset(new AutoUpdateThread(false, true));
-	updateCheckThread->start();
-#endif
 }
 
 void OBSBasic::on_actionRestartSafe_triggered()
@@ -433,55 +366,6 @@ void OBSBasic::logUploadFinished(const std::string &text, const std::string &err
 
 		emit app->logUploadFinished(uploadType, QString::fromStdString(logURL));
 	}
-}
-
-void OBSBasic::on_actionHelpPortal_triggered()
-{
-	QUrl url = QUrl("https://obsproject.com/help", QUrl::TolerantMode);
-	QDesktopServices::openUrl(url);
-}
-
-void OBSBasic::on_actionWebsite_triggered()
-{
-	QUrl url = QUrl("https://obsproject.com", QUrl::TolerantMode);
-	QDesktopServices::openUrl(url);
-}
-
-void OBSBasic::on_actionDiscord_triggered()
-{
-	QUrl url = QUrl("https://obsproject.com/discord", QUrl::TolerantMode);
-	QDesktopServices::openUrl(url);
-}
-
-void OBSBasic::on_actionShowWhatsNew_triggered()
-{
-#ifdef WHATSNEW_ENABLED
-	if (introCheckThread && introCheckThread->isRunning()) {
-		return;
-	}
-	if (!cef) {
-		return;
-	}
-
-	config_set_int(App()->GetAppConfig(), "General", "InfoIncrement", -1);
-
-	WhatsNewInfoThread *wnit = new WhatsNewInfoThread();
-	connect(wnit, &WhatsNewInfoThread::Result, this, &OBSBasic::ReceivedIntroJson, Qt::QueuedConnection);
-
-	introCheckThread.reset(wnit);
-	introCheckThread->start();
-#endif
-}
-
-void OBSBasic::on_actionReleaseNotes_triggered()
-{
-	/* Point at this fork's releases, not obsproject/obs-studio's. The old link appended
-	 * obs_get_version_string() as a tag, so it sent the operator to upstream's release page for
-	 * whatever upstream version this fork happens to be based on — release notes for software
-	 * they are not running, from a project that did not build it. */
-	QString addr("https://github.com/JGh0stSecOps/qci-studio/releases");
-	QUrl url(QString("%1/%2").arg(addr, obs_get_version_string()), QUrl::TolerantMode);
-	QDesktopServices::openUrl(url);
 }
 
 void OBSBasic::on_actionShowSettingsFolder_triggered()
@@ -667,26 +551,28 @@ void OBSBasic::on_actionMainRedo_triggered()
 	undo_s.redo();
 }
 
-void OBSBasic::on_autoConfigure_triggered()
-{
-	AutoConfig test(this);
-	test.setModal(true);
-	test.show();
-	test.exec();
-}
-
 void OBSBasic::on_stats_triggered()
 {
-	if (!stats.isNull()) {
-		stats->show();
-		stats->raise();
-		return;
+	/* ── ONE STATS, NOT TWO ──────────────────────────────────────────────────────────────────
+	 *
+	 * This used to `new OBSBasicStats(nullptr)` — a second, parentless, top-level Stats window,
+	 * while statsDock has held a fully working OBSBasicStats since OBSInit. Two instances is not
+	 * a cosmetic duplicate: each owns its own 2-second QTimer (QCiBasicStats.hpp) and its own
+	 * os_cpu_usage_info_start() handle, and each registers its own obs_frontend_add_event_callback,
+	 * so with both on screen the rig paid for two identical pollers measuring the same encoder.
+	 *
+	 * It also diverged in a way that made the duplicate the WRONG one to keep: the Reset-Stats
+	 * hotkey walks findChildren<OBSBasicStats *>() (QCiBasic_Hotkeys.cpp), which reaches the dock's
+	 * instance and never reached the parentless window — so "reset stats" silently did nothing to
+	 * the window the operator was actually looking at.
+	 *
+	 * raise() matters and is not decoration: statsDock shares a tab bar with the mixer and
+	 * transitions, and setVisible(true) on a tabified dock that is not the current tab is a no-op
+	 * — the same trap setupDockAction() documents at length in QCiBasic_Docks.cpp. */
+	if (statsDock) {
+		statsDock->setVisible(true);
+		statsDock->raise();
 	}
-
-	OBSBasicStats *statsDlg;
-	statsDlg = new OBSBasicStats(nullptr);
-	statsDlg->show();
-	stats = statsDlg;
 }
 
 void OBSBasic::on_idianPlayground_triggered()

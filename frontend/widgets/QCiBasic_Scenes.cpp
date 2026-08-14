@@ -159,7 +159,6 @@ void OBSBasic::AddScene(OBSSource source)
 		obs_source_t *source = obs_scene_get_source(scene);
 		blog(LOG_INFO, "User added scene '%s'", obs_source_get_name(source));
 
-		OBSProjector::UpdateMultiviewProjectors();
 	}
 
 	OnEvent(OBS_FRONTEND_EVENT_SCENE_LIST_CHANGED);
@@ -197,7 +196,6 @@ void OBSBasic::RemoveScene(OBSSource source)
 	if (!disableSaving) {
 		blog(LOG_INFO, "User Removed scene '%s'", obs_source_get_name(source));
 
-		OBSProjector::UpdateMultiviewProjectors();
 	}
 
 	if (foundItem) {
@@ -581,13 +579,7 @@ void OBSBasic::on_scenes_customContextMenuRequested(const QPoint &pos)
 
 		popup.addSeparator();
 
-		delete sceneProjectorMenu;
-		sceneProjectorMenu = new QMenu(QTStr("Projector.Open.Scene"));
-		AddProjectorMenuMonitors(sceneProjectorMenu, this, &OBSBasic::OpenSceneProjector);
-		sceneProjectorMenu->addSeparator();
-		sceneProjectorMenu->addAction(QTStr("Projector.Window"), this, &OBSBasic::OpenSceneWindow);
 
-		popup.addMenu(sceneProjectorMenu);
 		popup.addSeparator();
 
 		popup.addAction(QTStr("Screenshot.Scene"), this, &OBSBasic::ScreenshotScene);
@@ -602,24 +594,11 @@ void OBSBasic::on_scenes_customContextMenuRequested(const QPoint &pos)
 
 		/* ---------------------- */
 
-		QAction *multiviewAction = popup.addAction(QTStr("ShowInMultiview"));
-
+		/* "Show in Multiview" lived here. It is gone with the multiview itself; the
+		 * `show_in_multiview` private setting is left alone in existing collections rather than
+		 * stripped, because nothing reads it any more and rewriting 26 scenes to delete a key
+		 * nobody consults is a migration with no benefit and a failure mode. */
 		OBSSource source = GetCurrentSceneSource();
-		OBSDataAutoRelease data = obs_source_get_private_settings(source);
-
-		obs_data_set_default_bool(data, "show_in_multiview", true);
-		bool show = obs_data_get_bool(data, "show_in_multiview");
-
-		multiviewAction->setCheckable(true);
-		multiviewAction->setChecked(show);
-
-		auto showInMultiview = [](OBSData data) {
-			bool show = obs_data_get_bool(data, "show_in_multiview");
-			obs_data_set_bool(data, "show_in_multiview", !show);
-			OBSProjector::UpdateMultiviewProjectors();
-		};
-
-		connect(multiviewAction, &QAction::triggered, multiviewAction, std::bind(showInMultiview, data.Get()));
 
 		copyFilters->setEnabled(obs_source_filter_count(source) > 0);
 	}
@@ -737,7 +716,6 @@ void OBSBasic::ChangeSceneIndex(bool relative, int offset, int invalidIdx)
 	currentScene = GetOBSRef<OBSScene>(item).Get();
 	ui->scenes->blockSignals(false);
 
-	OBSProjector::UpdateMultiviewProjectors();
 }
 
 void OBSBasic::on_actionSceneUp_triggered()

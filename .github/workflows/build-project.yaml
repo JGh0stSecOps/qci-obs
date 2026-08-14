@@ -144,6 +144,47 @@ jobs:
           codesignTeam: ${{ steps.codesign.outputs.codesignTeam }}
           provisioningProfileUUID: ${{ steps.codesign.outputs.provisioningProfileUUID }}
 
+      - name: Test OBS Studio 🧪
+        run: |
+          : Test OBS Studio 🧪
+
+          # ── QCi: this step is what makes the ctest suite a gate ─────────────────────────────
+          # Every add_test() in the tree — including qci-branding, which exists because 146
+          # translated strings shipped claiming this fork uploads crash reports to the OBSProject
+          # — previously ran only when a human typed `ctest` by hand. Nothing between a keyboard
+          # and main executed it, so that same regression could merge fully green.
+          #
+          # Its position is load-bearing: it sits BEFORE "Package OBS Studio 📀". GitHub skips a
+          # job's remaining steps once one fails, so a red check now stops the artifact from ever
+          # being built or uploaded. Do not move it below packaging, and do not give it
+          # continue-on-error — either turns the gate back into a report.
+          #
+          # -C is mandatory rather than decoration: Xcode is a multi-config generator, and the
+          # generated CTestTestfile.cmake registers `add_test("qci-branding" NOT_AVAILABLE)` for
+          # every configuration it was not asked about.
+          #
+          # --no-tests=error is the fail-closed clause. ctest exits 0 when it finds nothing to
+          # run, so the exact regression the root CMakeLists documents at :22-38 —
+          # enable_testing() drifting back below add_subdirectory(), silently discarding every
+          # subdirectory add_test() — would otherwise leave this step green while testing
+          # nothing at all.
+          local -a test_args=(
+            --test-dir ${{ github.workspace }}/build_macos
+            -C ${{ needs.check-event.outputs.config }}
+            --output-on-failure
+            --no-tests=error
+          )
+
+          # The x86_64 leg is CROSS-COMPILED on an Apple Silicon runner, so its three test
+          # binaries cannot be executed here without Rosetta 2 — an image detail this workflow
+          # should not silently depend on. qci-branding is a Python check over the source tree
+          # and is architecture-independent, so it still gates this leg, and the arm64 leg runs
+          # the full suite over the same commit. --no-tests=error above also covers the filter:
+          # if the test is ever renamed, -R matches nothing and this fails instead of passing.
+          if [[ '${{ matrix.target }}' != ${CPUTYPE} ]] test_args+=(-R qci-branding)
+
+          ctest ${test_args}
+
       - name: Package OBS Studio 📀
         uses: ./.github/actions/package-obs
         if: ${{ fromJSON(needs.check-event.outputs.package) }}
@@ -216,6 +257,34 @@ jobs:
         with:
           target: x86_64
           config: ${{ needs.check-event.outputs.config }}
+
+      - name: Test OBS Studio 🧪
+        run: |
+          : Test OBS Studio 🧪
+
+          # ── QCi: same gate as the macOS job — see the long note there for why it exists ─────
+          # Two of the four registered tests exist on Linux: qci-branding (a Python check over
+          # the source tree) and obs-x264-test. qci-vision-frame and qci-au-format live in
+          # plugins added with `PLATFORMS MACOS`, so they are absent here rather than skipped.
+          #
+          # Nothing extra has to be built first, unlike macOS: the ubuntu path in
+          # .github/scripts/.build.zsh runs `cmake --build` with no --target, so the default
+          # target already covers obs-x264-test.
+          #
+          # /usr/bin/ctest, not a bare `ctest`, for the same reason .build.zsh pins
+          # /usr/bin/cmake: the build-obs action prepends Linuxbrew to PATH, and the toolchain
+          # that generated this build tree is the apt one (.github/scripts/.Aptfile pins
+          # cmake to /usr/bin/cmake).
+          #
+          # -C is inert under Ninja, which is single-config, and is kept so this line stays
+          # correct if the ubuntu preset ever moves to a multi-config generator.
+          # --no-tests=error is the fail-closed clause: ctest exits 0 when it finds no tests,
+          # which would make this step green on a build whose registration had disappeared.
+          /usr/bin/ctest \
+            --test-dir ${{ github.workspace }}/build_ubuntu \
+            -C ${{ needs.check-event.outputs.config }} \
+            --output-on-failure \
+            --no-tests=error
 
       - name: Package OBS Studio 📀
         uses: ./.github/actions/package-obs
@@ -412,6 +481,18 @@ jobs:
           target: ${{ matrix.architecture }}
           config: ${{ needs.check-event.outputs.config }}
 
+      # ── QCi: there is deliberately no "Test OBS Studio 🧪" step here ─────────────────────────
+      # The macOS and Ubuntu jobs both gate packaging on ctest. Windows does not, and that is a
+      # decision rather than an oversight:
+      #   - obs-x264-test is the only registered test with a binary on Windows, and it links
+      #     OBS::opts-parser, which links libobs. Windows has no rpath; the exe and obs.dll land
+      #     in different per-target output directories, so it would fail to launch (0xc0000135)
+      #     for reasons that have nothing to do with the code under test — the "environment
+      #     quirk" shape of red that plugins/obs-x264/cmake/x264-test.cmake warns about at length.
+      #   - The arm64 leg is cross-compiled on an x64 runner and could not run its binaries here.
+      # qci-branding, the check this suite exists for, is platform-independent and already gates
+      # this commit on two other jobs, so nothing goes unguarded. Before adding a step here, fix
+      # the DLL search path for obs-x264-test first — otherwise this job goes red on every push.
       - name: Package OBS Studio 📀
         uses: ./.github/actions/package-obs
         if: ${{ fromJSON(needs.check-event.outputs.package) }}

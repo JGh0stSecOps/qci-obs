@@ -20,6 +20,7 @@
 #include "obs-internal.h"
 
 #include <unistd.h>
+#include <dlfcn.h>
 #include <sys/types.h>
 #include <sys/sysctl.h>
 
@@ -44,15 +45,71 @@ void add_default_module_paths(void)
     obs_add_module_path(pluginModulePath.UTF8String, pluginDataPath.UTF8String);
 }
 
+/*
+ * Locate this framework's Resources directory WITHOUT depending on its bundle identifier.
+ *
+ * This used to be `[NSBundle bundleWithIdentifier:@"com.obsproject.libobs"]`. That literal is a
+ * copy of a value which is actually set by the build (cmake/macos/helpers.cmake stamps
+ * PRODUCT_BUNDLE_IDENTIFIER onto every target), so renaming the product silently broke the
+ * lookup: the bundle came back nil, every -[NSString ...] on it propagated nil, and
+ * `strlen(nil.UTF8String)` dereferenced NULL. That fired on the very first data-file lookup
+ * during obs_init_graphics(), i.e. before the app could finish starting at all.
+ *
+ * Asking "where is the code I am executing?" instead of "what is my name?" cannot drift when
+ * the product is renamed. dladdr() on a function in this binary yields
+ * .../libobs.framework/Versions/A/libobs, whose sibling Resources/ is the directory we want.
+ */
+static NSString *libobs_resources_dir(void)
+{
+    static NSString *cached = nil;
+    static dispatch_once_t once;
+
+    dispatch_once(&once, ^{
+        Dl_info info;
+        /* Any symbol defined in THIS binary identifies it; this helper is the closest to hand. */
+        if (dladdr((const void *) &libobs_resources_dir, &info) != 0 && info.dli_fname != NULL) {
+            NSString *binary = @(info.dli_fname);
+            NSString *candidate = [[binary stringByDeletingLastPathComponent]
+                stringByAppendingPathComponent:@"Resources"];
+
+            BOOL isDir = NO;
+            if ([[NSFileManager defaultManager] fileExistsAtPath:candidate isDirectory:&isDir] && isDir) {
+                cached = candidate;
+            }
+        }
+
+        /* Fallback for builds where libobs is not packaged as a framework. */
+        if (cached == nil) {
+            NSString *fallback = [[[NSBundle mainBundle] privateFrameworksPath]
+                stringByAppendingPathComponent:@"libobs.framework/Resources"];
+            if (fallback != nil) {
+                cached = fallback;
+            }
+        }
+    });
+
+    return cached;
+}
+
 char *find_libobs_data_file(const char *file)
 {
-    NSBundle *frameworkBundle = [NSBundle bundleWithIdentifier:@"com.obsproject.libobs"];
-    NSString *libobsDataPath =
-        [[[frameworkBundle bundleURL] path] stringByAppendingFormat:@"/%@/%s", @"Resources", file];
-    size_t path_length = strlen(libobsDataPath.UTF8String);
+    NSString *dir = libobs_resources_dir();
+
+    /*
+     * Never build a path out of nil, and never hand strlen() a NULL. Callers treat a
+     * non-existent path as "data file missing" and recover; a NULL deref takes the process out.
+     */
+    NSString *libobsDataPath = (dir != nil) ? [dir stringByAppendingPathComponent:@(file)] : nil;
+    const char *utf8 = (libobsDataPath != nil) ? libobsDataPath.UTF8String : NULL;
+    if (utf8 == NULL) {
+        blog(LOG_ERROR, "find_libobs_data_file: could not locate libobs Resources for '%s'", file);
+        utf8 = file;
+    }
+
+    size_t path_length = strlen(utf8);
 
     char *path = bmalloc(path_length + 1);
-    snprintf(path, (path_length + 1), "%s", libobsDataPath.UTF8String);
+    snprintf(path, (path_length + 1), "%s", utf8);
 
     return path;
 }

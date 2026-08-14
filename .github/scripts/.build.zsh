@@ -190,6 +190,32 @@ build() {
         analyze
       )
 
+      # ── QCi: the ctest binaries are NOT in the obs-studio dependency graph ──────────────────
+      # Every xcodebuild invocation above names `-target obs-studio` (or its scheme), so Xcode
+      # builds exactly that target and what it links. None of the three test executables is in
+      # it: obs-x264-test, qci-vision-frame-test and qci-au-format-test are standalone
+      # add_executable() targets that nothing depends on. Without this second invocation a CI
+      # `ctest` run finds their CTestTestfile entries, cannot find the binaries, and reports
+      # "Unable to find executable" — which ctest counts as a failure but reads like a broken
+      # runner rather than an untested build. That is the one shape of red that gets ignored;
+      # see the find_program(QCI_PYTHON) note in the root CMakeLists for the same trap.
+      #
+      # Named explicitly rather than -allTargets: -allTargets would also compile every target the
+      # app itself does not need and would silently start building whatever a future upstream
+      # merge adds. Adding a line here is the deliberate price of adding a test.
+      local -a test_args=(
+        ONLY_ACTIVE_ARCH=NO
+        -project obs-studio.xcodeproj
+        -target obs-x264-test
+        -target qci-vision-frame-test
+        -target qci-au-format-test
+        -destination "generic/platform=macOS,name=Any Mac"
+        -configuration ${config}
+        -parallelizeTargets
+        -hideShellScriptEnvironment
+        build
+      )
+
       pushd build_macos
       if (( analyze )) {
         run_xcodebuild ${analyze_args}
@@ -204,6 +230,16 @@ build() {
           mkdir OBS.app
           ditto frontend/${config}/OBS.app OBS.app
         }
+
+        # Built on BOTH branches above, not just the plain-build one: a tagged release takes the
+        # archive path and is precisely the build that must not ship untested. Deliberately NOT
+        # built under --analyze — that path emits SARIF and never executes anything, so building
+        # three test binaries for it would cost time and gate nothing.
+        #
+        # -configuration ${config} keeps the binaries in the directory `ctest -C ${config}` looks
+        # in; Xcode is a multi-config generator, so a mismatch here is a silent "test not found".
+        log_group "Building ${product_name} tests..."
+        run_xcodebuild ${test_args}
       }
       popd
       ;;

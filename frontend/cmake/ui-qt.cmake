@@ -26,12 +26,6 @@ set_property(TARGET obs-studio APPEND PROPERTY AUTOUIC_SEARCH_PATHS forms forms/
 target_sources(
   obs-studio
   PRIVATE
-    forms/AutoConfigFinishPage.ui
-    forms/AutoConfigStartPage.ui
-    forms/AutoConfigStartPage.ui
-    forms/AutoConfigStreamPage.ui
-    forms/AutoConfigTestPage.ui
-    forms/AutoConfigVideoPage.ui
     forms/ColorSelect.ui
     forms/LogUploadDialog.ui
     forms/QCiAbout.ui
@@ -44,7 +38,6 @@ target_sources(
     forms/QCiBasicSettings.ui
     forms/QCiBasicSourceSelect.ui
     forms/QCiBasicVCamConfig.ui
-    forms/QCiExtraBrowsers.ui
     forms/QCiImporter.ui
     forms/QCiMissingFiles.ui
     forms/QCiRemux.ui

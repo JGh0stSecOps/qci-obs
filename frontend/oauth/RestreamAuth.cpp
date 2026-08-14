@@ -2,6 +2,7 @@
 
 #include <dialogs/OAuthLogin.hpp>
 #include <docks/BrowserDock.hpp>
+#include <docks/QCiRigDocks.hpp>
 #include <utility/RemoteTextThread.hpp>
 #include <utility/obf.h>
 #include <widgets/QCiBasic.hpp>
@@ -214,6 +215,13 @@ void RestreamAuth::LoadUI()
 		const char *dockStateStr = config_get_string(main->Config(), service(), "DockState");
 		QByteArray dockState = QByteArray::fromBase64(QByteArray(dockStateStr));
 		main->restoreState(dockState);
+
+		/* The contract in docks/QCiRigDocks.hpp. SaveInternal() above stores a FULL
+		 * main->saveState(), so this blob has a vote on the rig's PRIVACY HOLD dock, and it is
+		 * cast AFTER OBSInit()'s one call to EnsureUndismissableVisible() — Auth::Load() runs from
+		 * OnFirstLoad(). Re-arm it here or a linked Restream account can hide the panic control
+		 * for the whole session. Reasoning in full at TwitchAuth::LoadUI(). */
+		QCiRigDocks::EnsureUndismissableVisible(main);
 	}
 
 	uiLoaded = true;

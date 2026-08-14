@@ -137,14 +137,8 @@ void LogUploadDialog::copyToClipBoard() const
 	clipboard->setText(ui->urlEdit->text());
 }
 
-void LogUploadDialog::openAnalyzeURL() const
-{
-	QUrlQuery queryParameters;
-	queryParameters.addQueryItem("log_url", QUrl::toPercentEncoding(ui->urlEdit->text()));
-	QUrl analyzerUrl = QUrl("https://obsproject.com/tools/analyzer", QUrl::TolerantMode);
-
-	analyzerUrl.setQuery(queryParameters);
-
-	QDesktopServices::openUrl(analyzerUrl);
-}
+/* openAnalyzeURL() opened obsproject.com/tools/analyzer with the uploaded log's URL. Uploading is
+ * off in this fork (logUploadURL and crashUploadURL are both empty), so there is never a URL to
+ * hand over, and the destination is upstream's service either way. */
+void LogUploadDialog::openAnalyzeURL() const {}
 } // namespace OBS

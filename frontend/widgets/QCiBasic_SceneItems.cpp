@@ -143,7 +143,6 @@ void OBSBasic::RenameSources(OBSSource source, QString newName, QString prevName
 
 	obs_scene_t *scene = obs_scene_from_source(source);
 	if (scene) {
-		OBSProjector::UpdateMultiviewProjectors();
 	}
 
 	UpdateContextBar();
@@ -572,8 +571,6 @@ QMenu *OBSBasic::AddBackgroundColorMenu(QMenu *menu, QWidgetAction *widgetAction
 void OBSBasic::CreateSourcePopupMenu(int idx, bool preview)
 {
 	QMenu popup(this);
-	delete previewProjectorSource;
-	delete sourceProjector;
 	delete scaleFilteringMenu;
 	delete blendingMethodMenu;
 	delete blendingModeMenu;
@@ -629,21 +626,11 @@ void OBSBasic::CreateSourcePopupMenu(int idx, bool preview)
 
 	// Projector menu entries
 	if (preview) {
-		previewProjectorSource = new QMenu(QTStr("Projector.Open.Preview"));
-		AddProjectorMenuMonitors(previewProjectorSource, this, &OBSBasic::OpenPreviewProjector);
-		previewProjectorSource->addSeparator();
-		previewProjectorSource->addAction(QTStr("Projector.Window"), this, &OBSBasic::OpenPreviewWindow);
 
-		popup.addMenu(previewProjectorSource);
 	}
 
 	if (hasVideo) {
-		sourceProjector = new QMenu(QTStr("Projector.Open.Source"));
-		AddProjectorMenuMonitors(sourceProjector, this, &OBSBasic::OpenSourceProjector);
-		sourceProjector->addSeparator();
-		sourceProjector->addAction(QTStr("Projector.Window"), this, &OBSBasic::OpenSourceWindow);
 
-		popup.addMenu(sourceProjector);
 	}
 
 	popup.addSeparator();

@@ -1,3 +1,5 @@
+<!-- QCi. =mix(c-rule, c-gnd, .40) — the border step pulled down toward the ground. Disabled has
+     to be dimmer than resting; this is the same value the disabled meter bed uses. -->
 <svg version="1.1" x="0" y="0" width="128" height="128" viewBox="0 0 128 128">
-<rect x="14" y="14" width="100" height="100" fill="none" stroke="#4A4A5A" stroke-width="8"/>
+<rect x="14" y="14" width="100" height="100" fill="none" stroke="#1F4E35" stroke-width="8"/>
 </svg>

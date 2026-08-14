@@ -1,0 +1,20 @@
+<!-- QCi CORNER BRACKET, 9-slice. The rig frames a pane with a top-left and a bottom-right
+     bracket and never four sides. Qt QSS has no ::before/::after, but border-image does a
+     9-slice, and at 24x24 sliced 12/12/12/12 the edge and centre regions are ZERO WIDTH, so
+     only the four corner tiles are ever painted. Two of them are drawn and two are left
+     empty, which is the rig's two-corner frame.
+
+     Stroke =c-grn #22C55E, 2px, the theme's `structure` border weight.
+     Usage: border-image: url(theme:QCi/bracket.svg) 12 12 12 12 stretch stretch;
+            border-width: 12px;
+     Applied to exactly three widgets. More than three and it stops being a signature. -->
+<svg version="1.1" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+  <!-- top-left tile: the L -->
+  <rect x="0" y="0" width="10" height="2" fill="#22C55E"/>
+  <rect x="0" y="0" width="2" height="10" fill="#22C55E"/>
+  <!-- top-right tile (12,0)-(24,12): deliberately EMPTY -->
+  <!-- bottom-left tile (0,12)-(12,24): deliberately EMPTY -->
+  <!-- bottom-right tile: the mirrored L -->
+  <rect x="14" y="22" width="10" height="2" fill="#22C55E"/>
+  <rect x="22" y="14" width="2" height="10" fill="#22C55E"/>
+</svg>

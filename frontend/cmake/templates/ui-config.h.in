@@ -13,7 +13,12 @@
 #define YOUTUBE_CLIENTID_HASH 0x@YOUTUBE_CLIENTID_HASH@
 #define YOUTUBE_SECRET_HASH   0x@YOUTUBE_SECRET_HASH@
 
-#define DEFAULT_THEME "com.obsproject.Yami.Original"
+// ⚠️ THE FORK'S OWN THEME IS THE DEFAULT, AND IT WAS NOT.
+// QCi.obt existed, extended Yami correctly, and appeared in Settings > Appearance — and every
+// fresh profile still came up wearing upstream's Yami, because THIS line still named it. The
+// operator's verdict on seeing it: "Still looks like OBS LOL". A theme nobody selects is a theme
+// nobody has. Shipping it as the default is the whole point of forking the application.
+#define DEFAULT_THEME "com.qci.QCi"
 
 /* Product display name, configured from OBS_PRODUCT_NAME in cmake/common/bootstrap.cmake. This is
  * the SINGLE source of truth for the name the user reads: window title, startup log banner,

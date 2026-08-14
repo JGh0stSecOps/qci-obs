@@ -739,8 +739,6 @@
       <string>Basic.MainMenu.Help.Logs</string>
      </property>
      <addaction name="actionShowLogs"/>
-     <addaction name="actionUploadCurrentLog"/>
-     <addaction name="actionUploadLastLog"/>
      <addaction name="actionViewCurrentLog"/>
     </widget>
     <widget class="QMenu" name="menuCrashLogs">
@@ -748,22 +746,14 @@
       <string>Basic.MainMenu.Help.CrashLogs</string>
      </property>
      <addaction name="actionShowCrashLogs"/>
-     <addaction name="actionUploadLastCrashLog"/>
     </widget>
-    <addaction name="actionHelpPortal"/>
-    <addaction name="actionWebsite"/>
-    <addaction name="actionDiscord"/>
     <addaction name="separator"/>
     <addaction name="menuLogFiles"/>
     <addaction name="menuCrashLogs"/>
     <addaction name="separator"/>
-    <addaction name="actionRepair"/>
-    <addaction name="actionCheckForUpdates"/>
     <addaction name="actionRestartSafe"/>
     <addaction name="actionShowMacPermissions"/>
     <addaction name="separator"/>
-    <addaction name="actionShowWhatsNew"/>
-    <addaction name="actionReleaseNotes"/>
     <addaction name="actionShowAbout"/>
     <addaction name="separator"/>
    </widget>
@@ -909,11 +899,6 @@
      <addaction name="actionSceneListMode"/>
      <addaction name="actionSceneGridMode"/>
     </widget>
-    <widget class="QMenu" name="multiviewProjectorMenu">
-     <property name="title">
-      <string>Projector.Open.Multiview</string>
-     </property>
-    </widget>
     <action name="resetUI">
      <property name="text">
       <string>Basic.MainMenu.View.ResetUI</string>
@@ -938,7 +923,6 @@
     <addaction name="separator"/>
     <addaction name="stats"/>
     <addaction name="separator"/>
-    <addaction name="multiviewProjectorMenu"/>
     <addaction name="separator"/>
     <addaction name="actionAlwaysOnTop"/>
    </widget>
@@ -946,7 +930,6 @@
     <property name="title">
      <string>Basic.MainMenu.Tools</string>
     </property>
-    <addaction name="autoConfigure"/>
     <addaction name="idianPlayground"/>
     <addaction name="actionOpenPluginManager"/>
     <addaction name="separator"/>
@@ -1680,16 +1663,6 @@
     <string>Basic.MainMenu.Help.Logs.ShowLogs</string>
    </property>
   </action>
-  <action name="actionUploadLastLog">
-   <property name="text">
-    <string>Basic.MainMenu.Help.Logs.UploadLastLog</string>
-   </property>
-  </action>
-  <action name="actionUploadCurrentLog">
-   <property name="text">
-    <string>Basic.MainMenu.Help.Logs.UploadCurrentLog</string>
-   </property>
-  </action>
   <action name="actionViewCurrentLog">
    <property name="text">
     <string>Basic.MainMenu.Help.Logs.ViewCurrentLog</string>
@@ -1837,32 +1810,14 @@
     <string>Ctrl+End</string>
    </property>
   </action>
-  <action name="actionCheckForUpdates">
-   <property name="text">
-    <string>Basic.MainMenu.Help.CheckForUpdates</string>
-   </property>
-  </action>
   <action name="actionShowMacPermissions">
    <property name="text">
     <string>MacPermissions.MenuAction</string>
    </property>
   </action>
-  <action name="actionRepair">
-   <property name="text">
-    <string>Basic.MainMenu.Help.Repair</string>
-   </property>
-  </action>
   <action name="actionRestartSafe">
    <property name="text">
     <string>Basic.MainMenu.Help.RestartSafeMode</string>
-   </property>
-  </action>
-  <action name="actionReleaseNotes">
-   <property name="text">
-    <string>Basic.MainMenu.Help.ReleaseNotes</string>
-   </property>
-   <property name="visible">
-    <bool>false</bool>
    </property>
   </action>
   <action name="actionInteract">
@@ -1873,11 +1828,6 @@
   <action name="actionAdvAudioProperties">
    <property name="text">
     <string>Basic.MainMenu.Edit.AdvAudio</string>
-   </property>
-  </action>
-  <action name="actionWebsite">
-   <property name="text">
-    <string>Basic.MainMenu.Help.Website</string>
    </property>
   </action>
   <action name="actionNewSceneCollection">
@@ -2032,16 +1982,6 @@
     <string>Idian Playground</string>
    </property>
   </action>
-  <action name="autoConfigure2">
-   <property name="text">
-    <string>Basic.AutoConfig</string>
-   </property>
-  </action>
-  <action name="autoConfigure">
-   <property name="text">
-    <string>Basic.AutoConfig</string>
-   </property>
-  </action>
   <action name="actionOpenPluginManager">
    <property name="text">
     <string>Basic.OpenPluginManager</string>
@@ -2079,29 +2019,9 @@
     <string>Basic.MainMenu.Docks.SideDocks</string>
    </property>
   </action>
-  <action name="actionHelpPortal">
-   <property name="text">
-    <string>Basic.MainMenu.Help.HelpPortal</string>
-   </property>
-  </action>
   <action name="actionShowCrashLogs">
    <property name="text">
     <string>Basic.MainMenu.Help.CrashLogs.ShowLogs</string>
-   </property>
-  </action>
-  <action name="actionUploadLastCrashLog">
-   <property name="text">
-    <string>Basic.MainMenu.Help.CrashLogs.UploadLastLog</string>
-   </property>
-  </action>
-  <action name="actionDiscord">
-   <property name="text">
-    <string>Basic.MainMenu.Help.Discord</string>
-   </property>
-  </action>
-  <action name="actionShowWhatsNew">
-   <property name="text">
-    <string>Basic.MainMenu.Help.WhatsNew</string>
    </property>
   </action>
   <action name="actionShowAbout">

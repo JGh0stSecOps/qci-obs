@@ -138,8 +138,6 @@
                 "-DENABLE_PULSEAUDIO=ON",
                 "-DENABLE_JACK=ON",
                 "-DENABLE_VLC=OFF",
-                "-DENABLE_AJA=ON",
-                "-DENABLE_LIBFDK=ON",
                 "-DENABLE_QSV11=ON",
                 "-DENABLE_DECKLINK=OFF"
             ],

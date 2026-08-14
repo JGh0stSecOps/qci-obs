@@ -1,6 +1,5 @@
 #include "QCiYoutubeActions.hpp"
 
-#include <docks/YouTubeAppDock.hpp>
 #include <widgets/QCiBasic.hpp>
 
 #include <qt-wrappers.hpp>
@@ -430,12 +429,6 @@ bool OBSYoutubeActions::CreateEventAction(YoutubeApiWrappers *api, BroadcastDesc
 		}
 	}
 
-#ifdef YOUTUBE_ENABLED
-	if (OBSBasic::Get()->GetYouTubeAppDock()) {
-		OBSBasic::Get()->GetYouTubeAppDock()->BroadcastCreated(broadcast.id.toStdString().c_str());
-	}
-#endif
-
 	return true;
 }
 
@@ -478,12 +471,6 @@ bool OBSYoutubeActions::ChooseAnEventAction(YoutubeApiWrappers *api, StreamDescr
 	} else {
 		apiYouTube->ResetChat();
 	}
-
-#ifdef YOUTUBE_ENABLED
-	if (OBSBasic::Get()->GetYouTubeAppDock()) {
-		OBSBasic::Get()->GetYouTubeAppDock()->BroadcastSelected(selectedBroadcast.toStdString().c_str());
-	}
-#endif
 
 	return true;
 }

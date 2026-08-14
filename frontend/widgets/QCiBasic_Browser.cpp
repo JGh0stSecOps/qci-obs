@@ -18,15 +18,15 @@
 #include "QCiBasic.hpp"
 
 #ifdef BROWSER_AVAILABLE
-#include <dialogs/QCiExtraBrowsers.hpp>
-#include <docks/BrowserDock.hpp>
-
-#include <json11.hpp>
-#include <qt-wrappers.hpp>
+/* browser-panel.hpp DIRECTLY, not transitively through docks/BrowserDock.hpp.
+ *
+ * This file used to reach QCef and QCefCookieManager by including BrowserDock.hpp for the custom
+ * browser docks, and picked up the panel API on the way. The docks are deleted; the cookie manager
+ * below still needs the real types, and a `struct QCef;` forward declaration is not enough to call
+ * a method on one — it compiles right up until somebody dereferences it. */
+#include <browser-panel.hpp>
 
 #include <QDir>
-
-using namespace json11;
 #endif
 
 #include <random>
@@ -38,130 +38,23 @@ QCef *cef = nullptr;
 QCefCookieManager *panel_cookies = nullptr;
 bool cef_js_avail = false;
 
-#ifdef BROWSER_AVAILABLE
-void OBSBasic::ClearExtraBrowserDocks()
-{
-	extraBrowserDockTargets.clear();
-	extraBrowserDockNames.clear();
-	extraBrowserDocks.clear();
-}
-
-void OBSBasic::LoadExtraBrowserDocks()
-{
-	const char *jsonStr = config_get_string(App()->GetUserConfig(), "BasicWindow", "ExtraBrowserDocks");
-
-	std::string err;
-	Json json = Json::parse(jsonStr, err);
-	if (!err.empty()) {
-		return;
-	}
-
-	Json::array array = json.array_items();
-	if (!array.empty()) {
-		extraBrowserMenuDocksSeparator = ui->menuDocks->addSeparator();
-	}
-
-	for (Json &item : array) {
-		std::string title = item["title"].string_value();
-		std::string url = item["url"].string_value();
-		std::string uuid = item["uuid"].string_value();
-
-		AddExtraBrowserDock(title.c_str(), url.c_str(), uuid.c_str(), false);
-	}
-}
-
-void OBSBasic::SaveExtraBrowserDocks()
-{
-	Json::array array;
-	for (int i = 0; i < extraBrowserDocks.size(); i++) {
-		QDockWidget *dock = extraBrowserDocks[i].get();
-		QString title = extraBrowserDockNames[i];
-		QString url = extraBrowserDockTargets[i];
-		QString uuid = dock->property("uuid").toString();
-		Json::object obj{
-			{"title", QT_TO_UTF8(title)},
-			{"url", QT_TO_UTF8(url)},
-			{"uuid", QT_TO_UTF8(uuid)},
-		};
-		array.push_back(obj);
-	}
-
-	std::string output = Json(array).dump();
-	config_set_string(App()->GetUserConfig(), "BasicWindow", "ExtraBrowserDocks", output.c_str());
-}
-
-void OBSBasic::ManageExtraBrowserDocks()
-{
-	if (!extraBrowsers.isNull()) {
-		extraBrowsers->show();
-		extraBrowsers->raise();
-		return;
-	}
-
-	extraBrowsers = new OBSExtraBrowsers(this);
-	extraBrowsers->show();
-}
-
-void OBSBasic::AddExtraBrowserDock(const QString &title, const QString &url, const QString &uuid, bool firstCreate)
-{
-	static int panel_version = -1;
-	if (panel_version == -1) {
-		panel_version = obs_browser_qcef_version();
-	}
-
-	BrowserDock *dock = new BrowserDock(title);
-	QString bId(uuid.isEmpty() ? QUuid::createUuid().toString() : uuid);
-	bId.replace(QRegularExpression("[{}-]"), "");
-	dock->setProperty("uuid", bId);
-	dock->setObjectName(title + OBJ_NAME_SUFFIX);
-	dock->resize(460, 600);
-	dock->setMinimumSize(80, 80);
-	dock->setWindowTitle(title);
-	dock->setAllowedAreas(Qt::AllDockWidgetAreas);
-
-	QCefWidget *browser = cef->create_widget(dock, QT_TO_UTF8(url), nullptr);
-	if (browser && panel_version >= 1) {
-		browser->allowAllPopups(true);
-	}
-
-	dock->SetWidget(browser);
-
-	/* Add support for Twitch Dashboard panels */
-	if (url.contains("twitch.tv/popout") && url.contains("dashboard/live")) {
-		QRegularExpression re("twitch.tv\\/popout\\/([^/]+)\\/");
-		QRegularExpressionMatch match = re.match(url);
-		QString username = match.captured(1);
-		if (username.length() > 0) {
-			std::string script;
-			script = "Object.defineProperty(document, 'referrer', { get: () => '";
-			script += "https://twitch.tv/";
-			script += username.toStdString();
-			script += "/dashboard/live";
-			script += "'});";
-			browser->setStartupScript(script);
-		}
-	}
-
-	AddDockWidget(dock, Qt::RightDockWidgetArea, true);
-	extraBrowserDocks.push_back(std::shared_ptr<QDockWidget>(dock));
-	extraBrowserDockNames.push_back(title);
-	extraBrowserDockTargets.push_back(url);
-
-	if (firstCreate) {
-		dock->setFloating(true);
-
-		QPoint curPos = pos();
-		QSize wSizeD2 = size() / 2;
-		QSize dSizeD2 = dock->size() / 2;
-
-		curPos.setX(curPos.x() + wSizeD2.width() - dSizeD2.width());
-		curPos.setY(curPos.y() + wSizeD2.height() - dSizeD2.height());
-
-		dock->move(curPos);
-		dock->setVisible(true);
-	}
-}
-#endif
+/* THE CUSTOM BROWSER DOCKS LIVED HERE — ClearExtraBrowserDocks(), LoadExtraBrowserDocks(),
+ * SaveExtraBrowserDocks(), ManageExtraBrowserDocks() and AddExtraBrowserDock(), plus the
+ * [BasicWindow] ExtraBrowserDocks JSON they persisted and the Twitch-dashboard referrer shim.
+ *
+ * They are the mechanism this fork replaces. Each one turned a title/URL row typed into a dialog
+ * into a single-purpose CEF window bolted onto the main window, and every ?bare=1&tab=<name> URL in
+ * qci-rig/events/control.html is one of them. The native rig docks are declared in source, named,
+ * laid out by default and covered by a test; these were URLs no code could reason about, and the
+ * arrangement they produced is the one the operator looked at and called stock OBS.
+ *
+ * CEF ITSELF IS NOT REMOVED, and everything below this line is why: the chat pane embeds somebody
+ * else's live-chat page, there is no native protocol that renders one, and the cookie manager is
+ * what keeps that sign-in out of the operator's ordinary browser profile.
+ *
+ * The saved ExtraBrowserDocks config key is deliberately left standing in user.ini rather than
+ * migrated away. It is inert with nothing left to read it, and rewriting the operator's config to
+ * delete a key nobody consults is a write with a failure mode and no benefit. */
 
 static std::string GenId()
 {

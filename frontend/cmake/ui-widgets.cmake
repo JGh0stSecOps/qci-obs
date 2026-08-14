@@ -41,7 +41,6 @@ target_sources(
     widgets/QCiBasic_StudioMode.cpp
     widgets/QCiBasic_SysTray.cpp
     widgets/QCiBasic_Transitions.cpp
-    widgets/QCiBasic_Updater.cpp
     widgets/QCiBasic_VirtualCam.cpp
     widgets/QCiBasic_YouTube.cpp
     widgets/QCiBasicControls.cpp
@@ -53,6 +52,17 @@ target_sources(
     widgets/QCiBasicStatusBar.cpp
     widgets/QCiBasicStatusBar.hpp
     widgets/QCiMainWindow.hpp
+    # ── THE TWO PERSISTENT STRIPS ──────────────────────────────────────────────────────────────
+    # Neither is a dock and neither can become one. They are window chrome: a QToolBar pinned to the
+    # top area (which in a QMainWindow sits OUTSIDE the four dock areas, so it spans the full width
+    # above both columns) and a widget that replaces the layout inside the existing status bar.
+    # Between them they are what makes this window unmistakable before a single label is read, and
+    # they are why the flight strip is NEW surface rather than a restyle — QCiBasic.ui has exactly
+    # two QToolBars, both of them inside docks, and no application toolbar at all.
+    widgets/QCiCommandBar.cpp
+    widgets/QCiCommandBar.hpp
+    widgets/QCiFlightStrip.cpp
+    widgets/QCiFlightStrip.hpp
     widgets/QCiProjector.cpp
     widgets/QCiProjector.hpp
     widgets/QCiQTDisplay.cpp

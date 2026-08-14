@@ -52,8 +52,6 @@ target_sources(
     components/MenuButton.hpp
     components/MenuCheckBox.cpp
     components/MenuCheckBox.hpp
-    components/Multiview.cpp
-    components/Multiview.hpp
     components/MuteCheckBox.hpp
     components/QCiAdvAudioCtrl.cpp
     components/QCiAdvAudioCtrl.hpp
